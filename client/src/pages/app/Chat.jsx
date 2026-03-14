@@ -58,6 +58,13 @@ export default function Chat() {
       const { data } = await api.get('/matches');
       setConversations(data.matches);
 
+      // Join all match rooms for live sidebar updates
+      if (socket && data.matches.length > 0) {
+        data.matches.forEach(match => {
+          socket.emit('join_match', match._id);
+        });
+      }
+
       // If URL has a specific match, select it
       if (initialMatchId) {
         const match = data.matches.find(m => m._id === initialMatchId);
@@ -96,16 +103,35 @@ export default function Chat() {
   useEffect(() => {
     if (!socket) return;
 
+    const onConnect = () => {
+      console.log('Socket reconnected, joining rooms...');
+      if (conversations.length > 0) {
+        conversations.forEach(c => socket.emit('join_match', c._id));
+      }
+    };
+
     const handleNewMessage = (newMessage) => {
-      // Avoid duplication: if it's our own message coming back from the socket, ignore it
-      const senderId = String(newMessage.sender?._id || newMessage.sender);
-      const currentUserId = String(user._id);
-      if (senderId === currentUserId) return;
+      console.log('New message received via socket:', newMessage._id);
+      
+      // Update conversations sidebar first regardless of which chat is open
+      setConversations(prev => prev.map(c => {
+        if (c._id === newMessage.match) {
+          return {
+            ...c,
+            lastMessage: newMessage,
+            unreadCount: (selectedChat?._id === c._id) ? c.unreadCount : (c.unreadCount + 1)
+          };
+        }
+        return c;
+      }));
 
       // If the message belongs to the currently open chat, append it
       if (selectedChat && newMessage.match === selectedChat._id) {
+        // Avoid duplication
+        const senderId = String(newMessage.sender?._id || newMessage.sender);
+        if (senderId === String(user._id)) return;
+
         setMessages(prev => {
-          // Extra de-duplication safety
           if (prev.some(m => m._id === newMessage._id)) return prev;
           return [...prev, newMessage];
         });
@@ -113,9 +139,8 @@ export default function Chat() {
         // Tell server it was read
         api.put(`/messages/${newMessage._id}/read`).catch(() => {});
       } else {
-        // Otherwise, show toast and refresh sidebar
-        toast.success(`New message from a match!`, { icon: '💬' });
-        fetchConversations();
+        // Notification for background messages
+        toast.success(`New message from match!`, { icon: '💬', duration: 3000 });
       }
     };
 
@@ -143,6 +168,7 @@ export default function Chat() {
       setMessages(prev => prev.map(m => m._id === updatedMsg._id ? updatedMsg : m));
     };
 
+    socket.on('connect', onConnect);
     socket.on('new_message', handleNewMessage);
     socket.on('message_deleted', handleMessageDeleted);
     socket.on('message_edited', handleMessageEdited);
@@ -150,13 +176,14 @@ export default function Chat() {
     socket.on('messages_read', handleMessagesRead);
 
     return () => {
+      socket.off('connect', onConnect);
       socket.off('new_message', handleNewMessage);
       socket.off('message_deleted', handleMessageDeleted);
       socket.off('message_edited', handleMessageEdited);
       socket.off('message_read', handleMessageRead);
       socket.off('messages_read', handleMessagesRead);
     };
-  }, [socket, selectedChat, user._id]);
+  }, [socket, selectedChat?._id, user._id, conversations.length]);
 
   const sendMessage = async (mediaData = null) => {
     if (!mediaData && !input.trim() || !selectedChat || isSending) return;
