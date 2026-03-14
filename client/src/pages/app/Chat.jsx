@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Smile, Image, Mic, ArrowLeft, Phone, Video, MoreVertical, Sparkles, Check, CheckCheck, User as UserIcon, MessageCircle, Edit2, Trash2, X } from 'lucide-react';
+import { Send, Smile, Image, Mic, ArrowLeft, Phone, Video, MoreVertical, Sparkles, Check, CheckCheck, User as UserIcon, MessageCircle, Edit2, Trash2, X, Crown } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
 import { useCall } from '../../context/CallContext';
@@ -397,12 +397,24 @@ export default function Chat() {
                 {c.otherUser?.isOnline && <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-500 border-2 border-card" />}
               </div>
               <div className="flex-1 text-left min-w-0">
-                <div className="flex justify-between items-baseline">
-                  <p className="font-medium text-sm truncate">{c.otherUser?.name}</p>
+                <div className="flex justify-between items-center gap-1">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <p className="font-medium text-sm truncate">{c.otherUser?.name}</p>
+                    {c.otherUser?.isPremium && <Crown className="w-3 h-3 text-amber-500 flex-shrink-0" />}
+                  </div>
                   <p className="text-[10px] text-dark-500 whitespace-nowrap">{c.lastMessage ? new Date(c.lastMessage.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}</p>
                 </div>
                 <p className={`text-xs truncate ${c.unreadCount > 0 ? 'text-white font-semibold' : 'text-dark-400'}`}>
-                  {c.lastMessage?.text || 'Start chatting! 👋'}
+                  {c.lastMessage ? (
+                    c.lastMessage.type === 'call' ? (
+                      <span className="flex items-center gap-1 italic">
+                        {c.lastMessage.callData?.type === 'video' ? <Video className="w-3 h-3" /> : <Phone className="w-3 h-3" />}
+                        {c.lastMessage.callData?.status === 'missed' ? 'Missed Call' : 'Call ended'}
+                      </span>
+                    ) : (
+                      c.lastMessage.text || (c.lastMessage.imageUrl ? '📷 Photo' : c.lastMessage.videoUrl ? '🎥 Video' : 'Message')
+                    )
+                  ) : 'Start chatting! 👋'}
                 </p>
               </div>
             </button>
@@ -429,7 +441,10 @@ export default function Chat() {
                 )}
               </div>
               <div>
-                <h3 className="font-medium text-sm">{selectedChat.otherUser?.name}</h3>
+                <div className="flex items-center gap-1.5">
+                  <h3 className="font-medium text-sm">{selectedChat.otherUser?.name}</h3>
+                  {selectedChat.otherUser?.isPremium && <Crown className="w-3.5 h-3.5 text-amber-500" />}
+                </div>
                 <p className="text-xs text-green-400">{selectedChat.otherUser?.isOnline ? 'Online' : 'Offline'}</p>
               </div>
             </div>

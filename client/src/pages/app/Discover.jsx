@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
-import { Heart, X, Star, MapPin, Sparkles, Filter, ChevronDown, User as UserIcon } from 'lucide-react';
+import { Heart, X, Star, MapPin, Sparkles, Filter, ChevronDown, User as UserIcon, Crown, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../lib/api';
 
@@ -61,6 +62,11 @@ function SwipeCard({ user, onSwipe, isTop }) {
             Verified
           </div>
         )}
+        {user.isPremium && (
+          <div className="absolute top-3 left-3 px-2 py-1 rounded-lg bg-amber-500/80 text-white text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-lg">
+            <Crown className="w-3 h-3" /> {user.premiumTier || 'Premium'}
+          </div>
+        )}
         <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-xl glass text-sm font-semibold">
           <span className="gradient-text">{user.trustScore}%</span> trust score
         </div>
@@ -86,9 +92,11 @@ function SwipeCard({ user, onSwipe, isTop }) {
 }
 
 export default function Discover() {
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [limitReached, setLimitReached] = useState(null); // 'like' or 'superlike'
 
   useEffect(() => {
     fetchUsers();
@@ -126,7 +134,10 @@ export default function Discover() {
         });
       }
     } catch (error) {
-      // If error (e.g. already liked), suppress toast to avoid disrupting UX
+      if (error.response?.data?.code === 'LIMIT_REACHED') {
+        const type = direction === 'like' ? 'daily swipes' : 'superlikes';
+        setLimitReached(type);
+      }
       console.error(error);
     }
   };
@@ -146,6 +157,9 @@ export default function Discover() {
         });
       }
     } catch (error) {
+      if (error.response?.data?.code === 'LIMIT_REACHED') {
+        setLimitReached('superlikes');
+      }
       console.error(error);
     }
   };
@@ -224,6 +238,34 @@ export default function Discover() {
           </motion.button>
         </div>
       )}
+      {/* Limit Reached Modal */}
+      <AnimatePresence>
+        {limitReached && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center px-6 bg-dark-950/80 backdrop-blur-md">
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+              className="w-full max-w-sm bg-dark-900 border border-white/10 rounded-3xl p-8 text-center shadow-2xl">
+              <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center mx-auto mb-6">
+                <AlertCircle className="w-8 h-8 text-amber-500" />
+              </div>
+              <h2 className="text-2xl font-display font-bold mb-2">Limit Reached!</h2>
+              <p className="text-dark-400 mb-8">
+                You've used all your {limitReached} for today. Upgrade to Gold or Platinum for unlimited connections!
+              </p>
+              <div className="space-y-3">
+                <button onClick={() => navigate('/app/premium')}
+                  className="w-full py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold hover:shadow-lg hover:shadow-amber-500/20 active:scale-95 transition-all">
+                  Upgrade to Premium
+                </button>
+                <button onClick={() => setLimitReached(null)}
+                  className="w-full py-4 rounded-xl btn-ghost !bg-transparent text-dark-500">
+                  Maybe Later
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -106,8 +106,8 @@ export default function Profile() {
                     </span>
                   )}
                   {user?.isPremium && (
-                    <span className="badge bg-amber-500/15 text-amber-400 border-amber-500/20">
-                      <Star className="w-3 h-3" /> Premium
+                    <span className="badge bg-amber-500/15 text-amber-400 border-amber-500/20 font-bold">
+                      <Crown className="w-3 h-3" /> {user.premiumTier?.toUpperCase() || 'PREMIUM'}
                     </span>
                   )}
                 </div>
@@ -120,28 +120,71 @@ export default function Profile() {
             )}
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 min-w-[140px]">
             {isEditing ? (
               <>
-                <button onClick={() => setIsEditing(false)} className="btn-ghost !py-2 !px-3 text-sm flex items-center gap-2 text-dark-400 hover:text-white">
-                  Cancel
-                </button>
-                <button onClick={handleSave} disabled={isLoading} className="btn-primary !py-2 !px-4 text-sm flex items-center gap-2">
+                <button onClick={handleSave} disabled={isLoading} className="btn-primary !py-2 !px-4 text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/20">
                   <Save className="w-4 h-4" /> {isLoading ? 'Saving...' : 'Save Changes'}
+                </button>
+                <button onClick={() => setIsEditing(false)} className="btn-ghost !py-2 !px-3 text-sm flex items-center justify-center gap-2 text-dark-400 hover:text-white">
+                  Cancel
                 </button>
               </>
             ) : (
-              <button onClick={() => setIsEditing(true)} className="btn-secondary !py-2 !px-4 text-sm flex items-center gap-2">
-                <Edit3 className="w-4 h-4" /> Edit Profile
-              </button>
+              <>
+                <button onClick={() => setIsEditing(true)} className="btn-secondary !py-2 !px-4 text-sm flex items-center justify-center gap-2 backdrop-blur-md">
+                  <Edit3 className="w-4 h-4" /> Edit Profile
+                </button>
+                {!user?.isPremium && (
+                  <button onClick={() => window.location.href='/app/premium'} className="w-full py-2 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[11px] font-bold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-amber-500/30 transition-all">
+                    <Crown className="w-3.5 h-3.5" /> UPGRADE
+                  </button>
+                )}
+              </>
             )}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Subscription Status Card */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card !bg-dark-900/50 border-amber-500/10">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-display font-semibold flex items-center gap-2">
+            <Crown className="w-4 h-4 text-amber-500" /> Subscription Status
+          </h3>
+          {user?.isPremium ? (
+             <span className="text-[10px] font-bold text-green-400 uppercase tracking-widest bg-green-400/10 px-2 py-0.5 rounded-full border border-green-400/20">Active</span>
+          ) : (
+             <span className="text-[10px] font-bold text-dark-500 uppercase tracking-widest bg-dark-800 px-2 py-0.5 rounded-full">Free Plan</span>
+          )}
+        </div>
+        
+        <div className="flex flex-col md:flex-row gap-6 items-center">
+          <div className="flex-1 space-y-1">
+            <p className="text-sm text-dark-300">
+              {user?.isPremium ? (
+                <>You are currently on the <span className="text-amber-500 font-bold">{user.premiumTier?.toUpperCase()}</span> plan.</>
+              ) : (
+                <>Upgrade to Gold or Platinum to see who likes you and get unlimited swipes!</>
+              )}
+            </p>
+            {user?.premiumExpiry && (
+              <p className="text-xs text-dark-500">Renews/Expires on: {new Date(user.premiumExpiry).toLocaleDateString()}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+             {user?.isPremium ? (
+                <button onClick={() => window.location.href='/app/premium'} className="btn-ghost !text-xs !py-2">Manage Plan</button>
+             ) : (
+                <button onClick={() => window.location.href='/app/premium'} className="btn-primary !text-xs !py-2 !px-6 bg-gradient-to-r from-amber-500 to-orange-500">Go Premium</button>
+             )}
           </div>
         </div>
       </motion.div>
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Stats */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="card">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="card">
           <h3 className="font-display font-semibold mb-4">Profile Stats</h3>
           <div className="grid grid-cols-2 gap-4">
             <div className="p-3 rounded-xl bg-dark-800/50">
@@ -164,7 +207,7 @@ export default function Profile() {
         </motion.div>
 
         {/* Personality Radar */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="card">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="card">
           <h3 className="font-display font-semibold mb-4 flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-primary" /> Personality Radar
           </h3>
@@ -187,7 +230,7 @@ export default function Profile() {
         </motion.div>
 
         {/* Interests */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="card">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="card">
           <h3 className="font-display font-semibold mb-4 flex items-center gap-2">
             <Heart className="w-4 h-4 text-secondary" /> Interests
           </h3>
@@ -208,7 +251,7 @@ export default function Profile() {
         </motion.div>
 
         {/* Lifestyle */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="card">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="card">
           <h3 className="font-display font-semibold mb-4">Lifestyle</h3>
           <div className="grid grid-cols-2 gap-3">
             {[
@@ -236,7 +279,7 @@ export default function Profile() {
         </motion.div>
 
         {/* Photo Gallery */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="md:col-span-2 card">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="md:col-span-2 card">
           <h3 className="font-display font-semibold mb-4 flex items-center gap-2">
             <Camera className="w-4 h-4 text-accent" /> Photo Gallery
           </h3>

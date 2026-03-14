@@ -62,9 +62,11 @@ const userSchema = new mongoose.Schema({
   
   // Premium
   isPremium: { type: Boolean, default: false },
+  premiumTier: { type: String, enum: ['none', 'gold', 'platinum'], default: 'none' },
   premiumExpiry: Date,
   boostActive: { type: Boolean, default: false },
   boostExpiry: Date,
+  lastSubscription: { type: mongoose.Schema.Types.ObjectId, ref: 'Subscription' },
   
   // Limits
   dailyLikes: { type: Number, default: 0 },

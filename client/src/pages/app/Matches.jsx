@@ -1,13 +1,16 @@
 import { motion } from 'framer-motion';
 import { Heart, MessageCircle, Search, Sparkles, MoreHorizontal, User as UserIcon } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
 export default function Matches() {
+  const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [matches, setMatches] = useState([]);
+  const [likesYou, setLikesYou] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -17,10 +20,14 @@ export default function Matches() {
   const fetchMatches = async () => {
     try {
       setLoading(true);
-      const { data } = await api.get('/matches');
-      setMatches(data.matches);
+      const [matchesRes, likesRes] = await Promise.all([
+        api.get('/matches'),
+        api.get('/likes/received')
+      ]);
+      setMatches(matchesRes.data.matches);
+      setLikesYou(likesRes.data.likes);
     } catch (error) {
-      toast.error('Failed to load matches');
+      toast.error('Failed to load activity');
     } finally {
       setLoading(false);
     }
@@ -35,9 +42,54 @@ export default function Matches() {
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold flex items-center gap-2">
-          </h1>
-          <p className="text-sm text-dark-400 mt-1">{matches.length} connections</p>
+          <h1 className="text-2xl font-display font-bold">Matches & Activity</h1>
+          <p className="text-sm text-dark-400 mt-1">{matches.length} matches · {likesYou.length} likes</p>
+        </div>
+      </div>
+
+      {/* Likes You Section (Premium Gated) */}
+      <div className="card !bg-transparent !border-none !p-0">
+        <h3 className="text-sm font-semibold text-dark-300 mb-4 flex items-center justify-between">
+          <span className="flex items-center gap-2"><Heart className="w-4 h-4 text-secondary" /> Likes You</span>
+          {!currentUser?.isPremium && (
+            <button onClick={() => navigate('/app/premium')} className="text-[11px] font-bold text-amber-500 uppercase tracking-widest hover:underline">
+              Upgrade to see
+            </button>
+          )}
+        </h3>
+        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+          {likesYou.length === 0 ? (
+            <div className="flex flex-col items-center justify-center min-w-[120px] h-40 rounded-2xl bg-dark-800/50 border border-dashed border-dark-700">
+               <Sparkles className="w-6 h-6 text-dark-600 mb-2" />
+               <span className="text-[10px] text-dark-500">None yet</span>
+            </div>
+          ) : (
+            likesYou.map((l, i) => (
+              <div key={l._id} className="relative group cursor-pointer" onClick={() => !currentUser?.isPremium && navigate('/app/premium')}>
+                <div className={`w-32 h-40 rounded-2xl bg-dark-800 overflow-hidden border border-white/5 ${!currentUser?.isPremium ? 'blur-[8px] grayscale' : 'hover:border-primary/50'} transition-all`}>
+                  {l.from?.avatar ? (
+                    <img src={l.from.avatar} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-dark-700">
+                      <UserIcon className="w-8 h-8 text-dark-500" />
+                    </div>
+                  )}
+                </div>
+                {!currentUser?.isPremium && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center">
+                      <Crown className="w-4 h-4 text-amber-500" />
+                    </div>
+                  </div>
+                )}
+                {currentUser?.isPremium && (
+                  <div className="absolute bottom-2 left-2 right-2 p-2 rounded-xl glass-dark">
+                    <span className="text-[11px] font-bold text-white truncate block">{l.from?.name}</span>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -114,12 +166,15 @@ export default function Matches() {
               </div>
 
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium text-sm">{m.otherUser?.name}, {m.otherUser?.age}</h3>
-                  <span className="text-xs text-dark-500">{new Date(m.updatedAt).toLocaleDateString()}</span>
+                <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <h3 className="font-medium text-sm truncate">{m.otherUser?.name}, {m.otherUser?.age}</h3>
+                    {m.otherUser?.isPremium && <Crown className="w-3 h-3 text-amber-500 flex-shrink-0" />}
+                  </div>
+                  <span className="text-xs text-dark-500 whitespace-nowrap">{new Date(m.updatedAt).toLocaleDateString()}</span>
                 </div>
                 <div className="flex items-center justify-between mt-1">
-                  <p className="text-sm text-dark-400 truncate pr-4">{m.lastMessage?.text || 'Sent a photo'}</p>
+                  <p className="text-sm text-dark-400 truncate pr-4">{m.lastMessage?.text || 'New match! 👋'}</p>
                   {m.unreadCount > 0 && (
                     <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center">
                       {m.unreadCount}
@@ -141,7 +196,8 @@ export default function Matches() {
         <div className="card text-center py-12">
           <Heart className="w-12 h-12 text-dark-600 mx-auto mb-3" />
           <h3 className="font-display font-semibold mb-1">No matches found</h3>
-          <p className="text-sm text-dark-400">Keep swiping to find your person!</p>
+          <p className="text-sm text-dark-400 mb-6">Keep swiping to find your person!</p>
+          <button onClick={() => navigate('/app/discover')} className="btn-primary py-2 px-6 text-sm">Start Swiping</button>
         </div>
       )}
     </div>

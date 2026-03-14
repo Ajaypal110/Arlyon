@@ -26,6 +26,12 @@ import Premium from './pages/app/Premium';
 import Notifications from './pages/app/Notifications';
 import AdminDashboard from './pages/admin/AdminDashboard';
 
+// Policy Pages
+import PrivacyPolicy from './pages/public/policies/PrivacyPolicy';
+import TermsOfService from './pages/public/policies/TermsOfService';
+import RefundPolicy from './pages/public/policies/RefundPolicy';
+import ContactUs from './pages/public/policies/ContactUs';
+
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -47,6 +53,12 @@ function App() {
                   <Route path="/signup" element={<Signup />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+                  
+                  {/* Policies */}
+                  <Route path="/privacy" element={<PrivacyPolicy />} />
+                  <Route path="/terms" element={<TermsOfService />} />
+                  <Route path="/refund-policy" element={<RefundPolicy />} />
+                  <Route path="/contact" element={<ContactUs />} />
 
                   {/* App */}
                   <Route path="/app" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>

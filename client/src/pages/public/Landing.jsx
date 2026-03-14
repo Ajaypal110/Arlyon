@@ -204,12 +204,11 @@ export default function Landing() {
             </div>
             <span className="font-display font-bold gradient-text">ARLYON</span>
           </div>
-          <div className="flex gap-6 text-sm text-dark-500">
-            <Link to="/about" className="hover:text-white transition-colors">About</Link>
-            <Link to="/features" className="hover:text-white transition-colors">Features</Link>
+          <div className="flex flex-wrap justify-center gap-6 text-sm text-dark-500">
             <Link to="/contact" className="hover:text-white transition-colors">Contact</Link>
-            <a href="#" className="hover:text-white transition-colors">Privacy</a>
-            <a href="#" className="hover:text-white transition-colors">Terms</a>
+            <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+            <Link to="/terms" className="hover:text-white transition-colors">Terms</Link>
+            <Link to="/refund-policy" className="hover:text-white transition-colors">Refund Policy</Link>
           </div>
           <p className="text-xs text-dark-600">© 2024 ARLYON. All rights reserved.</p>
         </div>

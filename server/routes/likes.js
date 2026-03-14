@@ -19,6 +19,40 @@ router.post('/:id', protect, async (req, res) => {
       return res.status(400).json({ success: false, message: "Can't like yourself" });
     }
 
+    const user = await User.findById(fromUserId);
+    
+    // Check Limits for Free Users
+    if (!user.isPremium) {
+      // Reset daily likes if it's a new day
+      const now = new Date();
+      const lastReset = new Date(user.lastLikeReset);
+      if (now.toDateString() !== lastReset.toDateString()) {
+        user.dailyLikes = 0;
+        user.dailySuperLikes = 0;
+        user.lastLikeReset = now;
+      }
+
+      if (type === 'like' && user.dailyLikes >= 10) {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Daily like limit reached. Upgrade to Premium for unlimited likes!',
+          code: 'LIMIT_REACHED'
+        });
+      }
+
+      if (type === 'superlike' && user.dailySuperLikes >= 1) {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Daily superlike limit reached. Upgrade to Premium for more!',
+          code: 'LIMIT_REACHED'
+        });
+      }
+
+      if (type === 'like') user.dailyLikes += 1;
+      if (type === 'superlike') user.dailySuperLikes += 1;
+      await user.save();
+    }
+
     const existing = await Like.findOne({ from: fromUserId, to: toUserId });
     if (existing) return res.status(400).json({ success: false, message: 'Already liked' });
 
@@ -34,7 +68,7 @@ router.post('/:id', protect, async (req, res) => {
       await like.save();
       await mutualLike.save();
 
-      const fromUser = await User.findById(fromUserId);
+      const fromUser = user; // Use the already fetched user
       const toUser = await User.findById(toUserId);
       const { score, breakdown } = calculateCompatibility(fromUser, toUser);
 
