@@ -370,14 +370,24 @@ export default function Chat() {
             </div>
           <div className="flex items-center gap-2">
             <button 
-              onClick={() => startCall(selectedChat.otherUser._id, 'audio', selectedChat._id)}
+              onClick={() => {
+                if (!selectedChat.otherUser?.isOnline) {
+                  toast.error(`${selectedChat.otherUser?.name} is offline. They might not receive the call.`);
+                }
+                startCall(selectedChat.otherUser._id, 'audio', selectedChat._id);
+              }}
               className="btn-ghost !p-2 transition-all hover:bg-primary/10 hover:text-primary active:scale-90"
               title="Voice Call"
             >
               <Phone className="w-4 h-4" />
             </button>
             <button 
-              onClick={() => startCall(selectedChat.otherUser._id, 'video', selectedChat._id)}
+              onClick={() => {
+                if (!selectedChat.otherUser?.isOnline) {
+                  toast.error(`${selectedChat.otherUser?.name} is offline. They might not receive the call.`);
+                }
+                startCall(selectedChat.otherUser._id, 'video', selectedChat._id);
+              }}
               className="btn-ghost !p-2 transition-all hover:bg-primary/10 hover:text-primary active:scale-90"
               title="Video Call"
             >

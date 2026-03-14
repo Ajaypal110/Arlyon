@@ -28,19 +28,30 @@ export function CallProvider({ children }) {
 
   const pcRef = useRef(null);
   const iceCandidateQueue = useRef([]);
+  // Refs for signaling stability
+  const callStateRef = useRef('idle');
+  const userRef = useRef(user);
+
+  useEffect(() => { callStateRef.current = callState; }, [callState]);
+  useEffect(() => { userRef.current = user; }, [user]);
 
   const ICE_SERVERS = {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:stun4.l.google.com:19302' },
     ],
   };
 
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('incoming_call', ({ from, fromUser, offer, type, matchId }) => {
-      if (callState !== 'idle') {
+    const handleIncomingCall = ({ from, fromUser, offer, type, matchId }) => {
+      console.log('Incoming call received in listener', { from, state: callStateRef.current });
+      if (callStateRef.current !== 'idle') {
+        console.log('Rejecting incoming call because state is not idle:', callStateRef.current);
         socket.emit('reject_call', { to: from });
         return;
       }
@@ -49,9 +60,10 @@ export function CallProvider({ children }) {
       setActiveCallPeer(from);
       setActiveCallMatchId(matchId);
       setActiveCallType(type);
-    });
+    };
 
-    socket.on('call_accepted', async ({ from, answer }) => {
+    const handleCallAccepted = async ({ from, answer }) => {
+      console.log('Call accepted by remote:', from);
       if (pcRef.current) {
         try {
           await pcRef.current.setRemoteDescription(answer);
@@ -65,14 +77,10 @@ export function CallProvider({ children }) {
           endCall();
         }
       }
-    });
+    };
 
-    socket.on('call_rejected', () => {
-      toast.error('Call Rejected');
-      endCall();
-    });
-
-    socket.on('ice_candidate', async ({ from, candidate }) => {
+    const handleIceCandidate = async ({ from, candidate }) => {
+      // console.log('Received ICE candidate from:', from);
       if (pcRef.current && pcRef.current.remoteDescription) {
         try {
           await pcRef.current.addIceCandidate(candidate);
@@ -82,21 +90,32 @@ export function CallProvider({ children }) {
       } else {
         iceCandidateQueue.current.push(candidate);
       }
-    });
+    };
 
-    socket.on('call_ended', () => {
+    const handleCallRejected = () => {
+      toast.error('Call Rejected');
+      cleanupCall(); // Use cleanupCall directly for immediate local reset
+    };
+
+    const handleCallEnded = () => {
       toast('Call Ended');
       cleanupCall();
-    });
+    };
+
+    socket.on('incoming_call', handleIncomingCall);
+    socket.on('call_accepted', handleCallAccepted);
+    socket.on('call_rejected', handleCallRejected);
+    socket.on('ice_candidate', handleIceCandidate);
+    socket.on('call_ended', handleCallEnded);
 
     return () => {
-      socket.off('incoming_call');
-      socket.off('call_accepted');
-      socket.off('call_rejected');
-      socket.off('ice_candidate');
-      socket.off('call_ended');
+      socket.off('incoming_call', handleIncomingCall);
+      socket.off('call_accepted', handleCallAccepted);
+      socket.off('call_rejected', handleCallRejected);
+      socket.off('ice_candidate', handleIceCandidate);
+      socket.off('call_ended', handleCallEnded);
     };
-  }, [socket, callState]);
+  }, [socket]); // Only re-run if socket instance changes
 
   const createPeerConnection = (targetId) => {
     const pc = new RTCPeerConnection(ICE_SERVERS);
@@ -108,7 +127,17 @@ export function CallProvider({ children }) {
     };
 
     pc.ontrack = (event) => {
-      setRemoteStream(event.streams[0]);
+      if (event.streams && event.streams[0]) {
+        console.log('Remote track received:', event.track.kind);
+        setRemoteStream(event.streams[0]);
+      }
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      console.log('ICE Connection State:', pc.iceConnectionState);
+      if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+        // Handle failure if needed, but endCall is usually triggered by socket
+      }
     };
 
     pcRef.current = pc;
@@ -118,10 +147,12 @@ export function CallProvider({ children }) {
 
   const startCall = async (otherUserId, type = 'video', matchId) => {
     try {
+      console.log('Initiating call to:', otherUserId);
       setCallState('dialing');
       setActiveCallPeer(otherUserId);
       setActiveCallMatchId(matchId);
       setActiveCallType(type);
+
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: true, 
         video: type === 'video' 
@@ -136,7 +167,7 @@ export function CallProvider({ children }) {
 
       socket.emit('call_user', { to: otherUserId, offer, type, matchId });
     } catch (err) {
-      console.error(err);
+      console.error('Failed to start call:', err);
       toast.error('Media Access Denied');
       setCallState('idle');
     }
@@ -147,7 +178,7 @@ export function CallProvider({ children }) {
       if (!incomingCallData) throw new Error('No incoming call data');
       const { from, offer, type } = incomingCallData;
       
-      console.log('Accepting call:', { from, type });
+      console.log('Processing call acceptance for:', from);
       
       let stream;
       try {
@@ -184,7 +215,6 @@ export function CallProvider({ children }) {
       setCallState('active');
       setCallStartTime(Date.now());
       
-      // Process queued ice candidates
       processIceQueue();
     } catch (err) {
       console.error('Failed to answer call:', err);
@@ -195,19 +225,22 @@ export function CallProvider({ children }) {
 
   const processIceQueue = () => {
     if (pcRef.current && pcRef.current.remoteDescription) {
-      console.log(`Processing ${iceCandidateQueue.current.length} queued candidates`);
-      iceCandidateQueue.current.forEach(async (candidate) => {
-        try {
-          await pcRef.current.addIceCandidate(candidate);
-        } catch (e) {
-          console.error('Error adding queued ice candidate', e);
-        }
-      });
-      iceCandidateQueue.current = [];
+      if (iceCandidateQueue.current.length > 0) {
+        console.log(`Processing ${iceCandidateQueue.current.length} queued candidates`);
+        iceCandidateQueue.current.forEach(async (candidate) => {
+          try {
+            await pcRef.current.addIceCandidate(candidate);
+          } catch (e) {
+            console.error('Error adding queued ice candidate', e);
+          }
+        });
+        iceCandidateQueue.current = [];
+      }
     }
   };
 
   const rejectCall = () => {
+    console.log('Rejecting call');
     if (incomingCallData) {
       socket.emit('reject_call', { 
         to: incomingCallData.from, 
@@ -219,13 +252,14 @@ export function CallProvider({ children }) {
   };
 
   const endCall = () => {
+    console.log('Ending call. Peer:', activeCallPeer);
     if (activeCallPeer) {
       const duration = callStartTime ? Math.floor((Date.now() - callStartTime) / 1000) : 0;
       socket.emit('end_call', { 
         to: activeCallPeer, 
         matchId: activeCallMatchId,
         type: activeCallType,
-        status: callState === 'active' ? 'ended' : 'missed',
+        status: callStateRef.current === 'active' ? 'ended' : 'missed',
         duration
       });
     }
@@ -233,6 +267,7 @@ export function CallProvider({ children }) {
   };
 
   const cleanupCall = () => {
+    console.log('Cleaning up call state');
     if (localStream) {
       localStream.getTracks().forEach(track => track.stop());
     }

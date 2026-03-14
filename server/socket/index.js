@@ -103,6 +103,7 @@ export const setupSocket = (io) => {
 
     // ICE Candidates
     socket.on('ice_candidate', ({ to, candidate }) => {
+      console.log(`❄️ ICE Candidate from ${userId} to ${to}`);
       socket.to(`user_${to}`).emit('ice_candidate', {
         from: userId,
         candidate
