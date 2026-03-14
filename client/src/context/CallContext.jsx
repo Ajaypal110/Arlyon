@@ -43,6 +43,9 @@ export function CallProvider({ children }) {
       { urls: 'stun:stun3.l.google.com:19302' },
       { urls: 'stun:stun4.l.google.com:19302' },
     ],
+    iceCandidatePoolSize: 10, // Pre-gather candidates for faster connection
+    bundlePolicy: 'max-bundle', // Bundle all media tracks into one transport
+    rtcpMuxPolicy: 'require'
   };
 
   useEffect(() => {
@@ -319,12 +322,14 @@ export function CallProvider({ children }) {
       callState, 
       incomingCallData,
       isMinimized,
-      setIsMinimized
+      setIsMinimized,
+      activeCallType
     }}>
       {children}
       <CallOverlay 
         callState={callState}
         incomingCallData={incomingCallData}
+        activeCallType={activeCallType}
         onAccept={acceptCall}
         onReject={rejectCall}
         onEnd={endCall}
