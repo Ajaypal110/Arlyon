@@ -39,13 +39,14 @@ const io = new Server(httpServer, {
 
 // Middleware
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-app.use(cors({ origin: function(origin, callback) {
-  if (!origin || allowedOrigins.includes(origin)) {
-    callback(null, true);
-  } else {
-    callback(new Error('Not allowed by CORS'));
-  }
-}, credentials: true }));
+app.use(cors({ 
+  origin: function(origin, callback) {
+    // Dynamically allow any origin (reflects the requester's origin back)
+    // This solves issues with Vercel preview URLs or custom domains not perfectly matching the allowed array.
+    callback(null, origin || true);
+  }, 
+  credentials: true 
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());

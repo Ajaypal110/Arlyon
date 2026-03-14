@@ -20,7 +20,16 @@ export default function Login() {
       toast.success('Welcome back!');
       navigate(data.user.isOnboarded ? '/app' : '/onboarding');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Login failed');
+      console.error('Login Failure Details:', err);
+      // Give a highly specific error message to the user
+      const msg = err.response?.data?.message || err.message;
+      if (msg.includes('Network Error')) {
+        toast.error('Network Error: The backend is unreachable. Is Render awake?');
+      } else if (msg.includes('Unexpected token')) {
+        toast.error('API Error: Backend returned HTML. Check Vercel VITE_API_URL env var.');
+      } else {
+        toast.error(`Login failed: ${msg}`);
+      }
     } finally {
       setLoading(false);
     }
