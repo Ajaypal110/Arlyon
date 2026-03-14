@@ -12,12 +12,16 @@ export function SocketProvider({ children }) {
   const [socket, setSocket] = useState(null);
   const { user } = useAuth();
 
-  useEffect(() => {
-    if (user) {
       const PROD_URL = 'https://arlyon.onrender.com';
       const token = localStorage.getItem('arlyon_token');
-      const envUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') : null;
-      const serverUrl = envUrl || (import.meta.env.MODE === 'production' ? PROD_URL : window.location.origin);
+      
+      let serverUrl;
+      if (import.meta.env.MODE === 'production' || import.meta.env.PROD) {
+        serverUrl = PROD_URL;
+      } else {
+        const envUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') : null;
+        serverUrl = envUrl || window.location.origin;
+      }
       
       const newSocket = io(serverUrl, {
         auth: { token },
@@ -32,6 +36,13 @@ export function SocketProvider({ children }) {
       }
     }
   }, [user]);
+
+  return (
+    <SocketContext.Provider value={{ socket }}>
+      {children}
+    </SocketContext.Provider>
+  );
+}
 
   return (
     <SocketContext.Provider value={{ socket }}>

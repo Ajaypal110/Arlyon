@@ -3,9 +3,12 @@ import axios from 'axios';
 const PROD_API_URL = 'https://arlyon.onrender.com/api';
 
 const getBaseUrl = () => {
+  if (import.meta.env.MODE === 'production' || import.meta.env.PROD) {
+    return PROD_API_URL;
+  }
   const envUrl = import.meta.env.VITE_API_URL;
   if (envUrl) return envUrl.replace(/\/+$/, '');
-  return import.meta.env.PROD || import.meta.env.MODE === 'production' ? PROD_API_URL : '/api';
+  return '/api';
 };
 
 const api = axios.create({
