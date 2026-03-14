@@ -15,7 +15,7 @@ export function SocketProvider({ children }) {
   useEffect(() => {
     if (user) {
       const token = localStorage.getItem('arlyon_token');
-      const newSocket = io(window.location.origin, {
+      const newSocket = io(import.meta.env.VITE_API_URL || window.location.origin, {
         auth: { token },
         query: { userId: user._id }
       });
