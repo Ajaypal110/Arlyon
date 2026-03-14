@@ -24,11 +24,6 @@ const PLANS = {
   },
 };
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'MISSING_KEY',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || 'MISSING_SECRET',
-});
-
 // GET /api/subscriptions/plans
 router.get('/plans', (req, res) => {
   res.json({ success: true, plans: PLANS });
@@ -54,6 +49,11 @@ router.post('/create-order', protect, async (req, res) => {
       currency: "INR",
       receipt: `receipt_${req.user._id}_${Date.now()}`
     };
+
+    const razorpay = new Razorpay({
+      key_id: (process.env.RAZORPAY_KEY_ID || '').trim(),
+      key_secret: (process.env.RAZORPAY_KEY_SECRET || '').trim(),
+    });
 
     const order = await razorpay.orders.create(options);
     
@@ -86,7 +86,7 @@ router.post('/verify-payment', protect, async (req, res) => {
 
     const body = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .createHmac('sha256', (process.env.RAZORPAY_KEY_SECRET || '').trim())
       .update(body.toString())
       .digest('hex');
 
