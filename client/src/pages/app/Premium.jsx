@@ -61,7 +61,7 @@ export default function Premium() {
         currency: orderData.order.currency,
         name: 'ARLYON Premium',
         description: `Upgrade to ${planType.toUpperCase()} Plan`,
-        image: 'https://cdn-icons-png.flaticon.com/512/2111/2111463.png',
+        image: 'https://cdn-icons-png.flaticon.com/512/752/752763.png', // Premium Crown Icon
         order_id: orderData.order.id,
         handler: async function (response) {
           try {
