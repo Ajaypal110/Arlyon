@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 const plans = [
   { 
     name: 'Gold', 
-    price: '999', 
+    price: '1', 
     type: 'gold',
     color: 'from-amber-500 to-orange-500', 
     icon: Crown, 
@@ -17,7 +17,7 @@ const plans = [
   },
   { 
     name: 'Platinum', 
-    price: '1,999', 
+    price: '2', 
     type: 'platinum',
     color: 'from-primary to-secondary', 
     icon: Star, 
