@@ -1,6 +1,7 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Heart, MessageCircle, Search, Sparkles, MoreHorizontal, User as UserIcon } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Heart, MessageCircle, Search, Sparkles, MoreHorizontal, User as UserIcon, Crown } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';

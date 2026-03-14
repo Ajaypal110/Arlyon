@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
-import { Camera, Edit3, MapPin, Heart, Shield, Star, Sparkles, Calendar, Wine, Dumbbell, Salad, Dog, Plus, Save, X } from 'lucide-react';
+import { Camera, Edit3, MapPin, Heart, Shield, Star, Sparkles, Calendar, Wine, Dumbbell, Salad, Dog, Plus, Save, X, Crown } from 'lucide-react';
 import { useState } from 'react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';

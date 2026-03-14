@@ -38,9 +38,16 @@ router.get('/plans', (req, res) => {
 router.post('/create-order', protect, async (req, res) => {
   try {
     const { planType } = req.body;
-    const plan = PLANS[planType];
+    console.log('Initiating order for plan:', planType);
     
-    if (!plan) return res.status(400).json({ success: false, message: 'Invalid plan type' });
+    // Normalize and check
+    const normalizedType = planType?.toString().toLowerCase().trim();
+    const plan = PLANS[normalizedType];
+    
+    if (!plan) {
+      console.warn('Subscription Error: Invalid plan type received:', planType);
+      return res.status(400).json({ success: false, message: `Invalid plan type: ${planType}` });
+    }
 
     const options = {
       amount: plan.price * 100, // amount in paisa
