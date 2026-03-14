@@ -36,6 +36,7 @@ export default function Login() {
 
   const handleGoogleSuccess = async (response) => {
     setLoading(true);
+    console.log('Google Auth Response:', response);
     try {
       const { data } = await api.post('/auth/google', { credential: response.credential });
       localStorage.setItem('arlyon_token', data.token);
@@ -43,8 +44,8 @@ export default function Login() {
       toast.success('Signed in with Google!');
       navigate(data.user.isOnboarded ? '/app' : '/onboarding');
     } catch (err) {
-      console.error('Google Login Error:', err);
-      toast.error('Google login failed');
+      console.error('Google Backend Error:', err.response?.data || err);
+      toast.error(err.response?.data?.message || 'Verification failed on server');
     } finally {
       setLoading(false);
     }
@@ -138,7 +139,10 @@ export default function Login() {
           <div className="flex justify-center mb-6">
             <GoogleLogin
               onSuccess={handleGoogleSuccess}
-              onError={() => toast.error('Google Login Failed')}
+              onError={() => {
+                console.error('Google SDK onError triggered. This usually means Client ID or Origins are wrong.');
+                toast.error('Google SDK error - check origins');
+              }}
               theme="filled_black"
               shape="pill"
               size="large"

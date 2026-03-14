@@ -155,6 +155,7 @@ router.post('/google', async (req, res) => {
   try {
     const { credential } = req.body;
     if (!credential) return res.status(400).json({ success: false, message: 'No Google credential provided' });
+    console.log('Received Google credential token, verifying...');
 
     const ticket = await client.verifyIdToken({
       idToken: credential,
@@ -163,10 +164,12 @@ router.post('/google', async (req, res) => {
 
     const payload = ticket.getPayload();
     const { sub: googleId, email, name, picture } = payload;
+    console.log(`Verified Google user: ${email} (${googleId})`);
 
     let user = await User.findOne({ 
       $or: [{ googleId }, { email }] 
     });
+    console.log(user ? `Found existing user: ${user.email}` : `No user found for ${email}, creating new account...`);
 
     if (user) {
       // Update googleId if they had an email account but not linked to Google yet
@@ -210,8 +213,12 @@ router.post('/google', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Google Auth Error:', error);
-    res.status(500).json({ success: false, message: 'Google authentication failed' });
+    console.error('--- GOOGLE AUTH DEBUG ERROR ---');
+    console.error('Error Name:', error.name);
+    console.error('Error Message:', error.message);
+    if (error.stack) console.error('Stack Trace:', error.stack);
+    console.error('---------------------------------');
+    res.status(500).json({ success: false, message: `Google verification failed: ${error.message}` });
   }
 });
 

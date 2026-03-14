@@ -32,6 +32,7 @@ export default function Signup() {
 
   const handleGoogleSuccess = async (response) => {
     setLoading(true);
+    console.log('Google Auth Response (Signup):', response);
     try {
       const { data } = await api.post('/auth/google', { credential: response.credential });
       localStorage.setItem('arlyon_token', data.token);
@@ -39,8 +40,8 @@ export default function Signup() {
       toast.success('Authenticated with Google!');
       navigate(data.user.isOnboarded ? '/app' : '/onboarding');
     } catch (err) {
-      console.error('Google Auth Error:', err);
-      toast.error('Google signup failed');
+      console.error('Google Backend Error (Signup):', err.response?.data || err);
+      toast.error(err.response?.data?.message || 'Verification failed on server');
     } finally {
       setLoading(false);
     }
@@ -118,7 +119,10 @@ export default function Signup() {
           <div className="flex justify-center mb-6">
             <GoogleLogin
               onSuccess={handleGoogleSuccess}
-              onError={() => toast.error('Google Signup Failed')}
+              onError={() => {
+                console.error('Google SDK onError (Signup) triggered.');
+                toast.error('Google SDK error - check configuration');
+              }}
               theme="filled_black"
               shape="pill"
               size="large"
