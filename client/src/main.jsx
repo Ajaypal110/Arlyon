@@ -33,6 +33,7 @@ import RefundPolicy from './pages/public/policies/RefundPolicy';
 import ContactUs from './pages/public/policies/ContactUs';
 
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import './lib/firebase'; // Initialize Firebase
 
 import './index.css';
 
