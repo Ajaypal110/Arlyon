@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+const PROD_API_URL = 'https://arlyon.onrender.com/api';
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: import.meta.env.VITE_API_URL || import.meta.env.PROD || import.meta.env.MODE === 'production' ? PROD_API_URL : '/api',
   withCredentials: true,
 });
 
@@ -18,7 +20,8 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        const { data } = await axios.post(`${import.meta.env.VITE_API_URL || '/api'}/auth/refresh`, {}, { withCredentials: true });
+        const refreshUrl = import.meta.env.VITE_API_URL || import.meta.env.MODE === 'production' ? PROD_API_URL : '/api';
+        const { data } = await axios.post(`${refreshUrl}/auth/refresh`, {}, { withCredentials: true });
         localStorage.setItem('arlyon_token', data.token);
         originalRequest.headers.Authorization = `Bearer ${data.token}`;
         return api(originalRequest);

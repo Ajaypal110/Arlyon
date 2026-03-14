@@ -14,8 +14,11 @@ export function SocketProvider({ children }) {
 
   useEffect(() => {
     if (user) {
+      const PROD_URL = 'https://arlyon.onrender.com';
       const token = localStorage.getItem('arlyon_token');
-      const serverUrl = (import.meta.env.VITE_API_URL || '').replace(/\/api\/?$/, '') || window.location.origin;
+      const envUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') : null;
+      const serverUrl = envUrl || (import.meta.env.MODE === 'production' ? PROD_URL : window.location.origin);
+      
       const newSocket = io(serverUrl, {
         auth: { token },
         query: { userId: user._id }
