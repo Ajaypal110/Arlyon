@@ -14,6 +14,7 @@ const userSchema = new mongoose.Schema({
   bio: { type: String, maxlength: 500, default: '' },
   dateOfBirth: { type: Date },
   age: { type: Number },
+  views: { type: Number, default: 0 },
   gender: { type: String, enum: ['male', 'female', 'non-binary', 'other'] },
   genderPreference: { type: String, enum: ['male', 'female', 'everyone'], default: 'everyone' },
   

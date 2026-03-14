@@ -1,6 +1,8 @@
 import express from 'express';
 import User from '../models/User.js';
 import Like from '../models/Like.js';
+import Match from '../models/Match.js';
+import Message from '../models/Message.js';
 import { protect } from '../middleware/auth.js';
 import { uploadImage } from '../utils/cloudinary.js';
 
@@ -11,6 +13,12 @@ router.get('/profile/:id', protect, async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select('-refreshToken -resetPasswordToken -emailVerificationToken');
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    
+    // Increment views if viewing someone else
+    if (req.params.id !== req.user._id.toString()) {
+      await User.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } });
+    }
+
     res.json({ success: true, user });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -140,6 +148,67 @@ router.post('/block/:id', protect, async (req, res) => {
     // Simply remove matches and likes between users
     await Like.deleteMany({ $or: [{ from: req.user._id, to: req.params.id }, { from: req.params.id, to: req.user._id }] });
     res.json({ success: true, message: 'User blocked' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/users/stats
+router.get('/stats', protect, async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // 1. Profile Views
+    const user = await User.findById(userId).select('views profileCompletion');
+    
+    // 2. Total Matches
+    const totalMatches = await Match.countDocuments({ 
+      users: userId,
+      isActive: true 
+    });
+
+    // 3. Total Messages
+    const totalMessages = await Message.countDocuments({
+      $or: [{ sender: userId }, { receiver: userId }]
+    });
+
+    // 4. Recent Matches
+    const recentMatchesRaw = await Match.find({ users: userId, isActive: true })
+      .populate('users', 'name age avatar photos currentMood')
+      .sort({ updatedAt: -1 })
+      .limit(5);
+
+    const recentMatches = recentMatchesRaw.map(m => {
+      const otherUser = m.users.find(u => u._id.toString() !== userId.toString());
+      return {
+        _id: m._id,
+        name: otherUser.name,
+        age: otherUser.age,
+        avatar: otherUser.avatar,
+        compatibility: m.compatibilityScore || 0,
+        time: m.updatedAt,
+        otherUserId: otherUser._id
+      };
+    });
+
+    // 5. Activity Feed (Mocked for now based on recent matches and messages)
+    const activities = [
+      { type: 'match', text: 'You have a new match!', time: 'Recently', icon: 'Heart', color: 'text-secondary' },
+      { type: 'message', text: 'New messages waiting', time: 'Just now', icon: 'MessageCircle', color: 'text-primary' }
+    ];
+
+    res.json({
+      success: true,
+      stats: {
+        profileViews: user.views || 0,
+        matches: totalMatches,
+        messages: totalMessages,
+        compatibilityAvg: '85%', // Mocked for now
+        profileCompletion: user.profileCompletion || 0
+      },
+      recentMatches,
+      activities
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

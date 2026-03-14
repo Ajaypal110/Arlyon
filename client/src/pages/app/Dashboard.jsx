@@ -1,19 +1,61 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
-import { Heart, MessageCircle, Eye, TrendingUp, Sparkles, Users, Crown, Zap } from 'lucide-react';
-
-const stats = [
-  { label: 'Profile Views', value: '0', change: '0%', icon: Eye, color: 'from-primary to-violet-500' },
-  { label: 'Matches', value: '0', change: '0', icon: Heart, color: 'from-secondary to-pink-400' },
-  { label: 'Messages', value: '0', change: '0', icon: MessageCircle, color: 'from-accent to-cyan-400' },
-  { label: 'Compatibility Avg', value: '0%', change: '0%', icon: TrendingUp, color: 'from-green-500 to-emerald-400' },
-];
-
-const recentMatches = [];
-const activities = [];
+import { Heart, MessageCircle, Eye, TrendingUp, Sparkles, Users, Crown, Zap, Clock } from 'lucide-react';
+import api from '../../lib/api';
+import toast from 'react-hot-toast';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState({
+    stats: {
+      profileViews: 0,
+      matches: 0,
+      messages: 0,
+      compatibilityAvg: '0%',
+      profileCompletion: 0
+    },
+    recentMatches: [],
+    activities: []
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const { data } = await api.get('/users/stats');
+        if (data.success) {
+          setDashboardData({
+            stats: data.stats,
+            recentMatches: data.recentMatches,
+            activities: data.activities
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch dashboard stats:', err);
+        toast.error('Could not load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  const stats = [
+    { label: 'Profile Views', value: dashboardData.stats.profileViews, change: '+12%', icon: Eye, color: 'from-primary to-violet-500' },
+    { label: 'Matches', value: dashboardData.stats.matches, change: 'new', icon: Heart, color: 'from-secondary to-pink-400' },
+    { label: 'Messages', value: dashboardData.stats.messages, change: 'unread', icon: MessageCircle, color: 'from-accent to-cyan-400' },
+    { label: 'Compatibility Avg', value: dashboardData.stats.compatibilityAvg, change: 'Top 10%', icon: TrendingUp, color: 'from-green-500 to-emerald-400' },
+  ];
+
+  if (loading) {
+    return (
+      <div className="h-[60vh] flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 max-w-6xl">
@@ -52,84 +94,106 @@ export default function Dashboard() {
         <div className="lg:col-span-2 card">
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-display font-semibold text-lg">Recent Matches</h2>
-            <span className="badge-primary"><Users className="w-3 h-3" /> {recentMatches.length} new</span>
+            <span className="badge-primary"><Users className="w-3 h-3" /> {dashboardData.recentMatches.length} new</span>
           </div>
           <div className="space-y-4">
-            {recentMatches.map((m, i) => (
-              <motion.div
-                key={m.name}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 + i * 0.1 }}
-                className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary/30 to-secondary/30 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
-                    {m.avatar}
+            {dashboardData.recentMatches.length > 0 ? (
+              dashboardData.recentMatches.map((m, i) => (
+                <motion.div
+                  key={m._id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 + i * 0.1 }}
+                  className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3">
+                    {m.avatar ? (
+                      <img src={m.avatar} alt={m.name} className="w-11 h-11 rounded-full object-cover border border-white/10 group-hover:scale-110 transition-transform" />
+                    ) : (
+                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary/30 to-secondary/30 flex items-center justify-center text-sm group-hover:scale-110 transition-transform">
+                        {m.name[0]}
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-medium text-sm">{m.name}, {m.age}</p>
+                      <p className="text-xs text-dark-500">
+                        {new Date(m.time).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-sm">{m.name}, {m.age}</p>
-                    <p className="text-xs text-dark-500">{m.time}</p>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-primary-300">{m.compatibility}%</p>
+                      <p className="text-xs text-dark-500">match</p>
+                    </div>
+                    <div className="w-12 h-1.5 rounded-full bg-dark-700 overflow-hidden hidden md:block">
+                      <div className="h-full rounded-full bg-gradient-to-r from-primary to-secondary" style={{ width: `${m.compatibility}%` }} />
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-primary-300">{m.compatibility}%</p>
-                    <p className="text-xs text-dark-500">match</p>
-                  </div>
-                  <div className="w-12 h-1.5 rounded-full bg-dark-700 overflow-hidden">
-                    <div className="h-full rounded-full bg-gradient-to-r from-primary to-secondary" style={{ width: `${m.compatibility}%` }} />
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-dark-500 italic">No matches yet. Keep exploring!</p>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Activity Feed */}
         <div className="card">
           <h2 className="font-display font-semibold text-lg mb-6">Activity</h2>
-          <div className="space-y-4">
-            {activities.map((a, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 + i * 0.1 }}
-                className="flex items-start gap-3"
-              >
-                <div className="w-8 h-8 rounded-lg bg-dark-800 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <a.icon className={`w-4 h-4 ${a.color}`} />
-                </div>
-                <div>
-                  <p className="text-sm">{a.text}</p>
-                  <p className="text-xs text-dark-500 mt-0.5">{a.time}</p>
-                </div>
-              </motion.div>
-            ))}
+          <div className="space-y-6">
+            {dashboardData.activities.map((a, i) => {
+              const Icon = a.icon === 'Heart' ? Heart : MessageCircle;
+              return (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 + i * 0.1 }}
+                  className="flex items-start gap-3"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-dark-800 flex items-center justify-center flex-shrink-0 mt-0.5 border border-white/5">
+                    <Icon className={`w-4 h-4 ${a.color}`} />
+                  </div>
+                  <div>
+                    <p className="text-sm text-dark-200">{a.text}</p>
+                    <p className="text-xs text-dark-500 mt-1 flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> {a.time}
+                    </p>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </div>
 
       {/* Profile Completion */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
-        className="card bg-gradient-to-r from-primary/5 via-card to-secondary/5 border-primary/10">
+        className="card bg-gradient-to-r from-primary/10 via-card to-secondary/10 border-primary/20 backdrop-blur-sm">
         <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-display font-semibold text-lg mb-1">Complete Your Profile</h3>
-            <p className="text-sm text-dark-400">A complete profile gets 3x more matches</p>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center">
+              <Sparkles className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-display font-semibold text-lg mb-0.5">Complete Your Profile</h3>
+              <p className="text-sm text-dark-400">A complete profile gets 3x more matches</p>
+            </div>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold gradient-text">{user?.profileCompletion || 60}%</p>
-            <p className="text-xs text-dark-500">completed</p>
+            <p className="text-2xl font-bold gradient-text">{dashboardData.stats.profileCompletion}%</p>
+            <p className="text-xs text-dark-500 font-medium tracking-wider uppercase">completed</p>
           </div>
         </div>
-        <div className="w-full h-2 rounded-full bg-dark-700 mt-4 overflow-hidden">
+        <div className="w-full h-2.5 rounded-full bg-dark-800 mt-6 overflow-hidden p-0.5 border border-white/5">
           <motion.div
             initial={{ width: 0 }}
-            animate={{ width: `${user?.profileCompletion || 60}%` }}
-            transition={{ delay: 0.8, duration: 1, ease: 'easeOut' }}
-            className="h-full rounded-full bg-gradient-to-r from-primary via-secondary to-accent"
+            animate={{ width: `${dashboardData.stats.profileCompletion}%` }}
+            transition={{ delay: 0.8, duration: 1.5, ease: 'circOut' }}
+            className="h-full rounded-full bg-gradient-to-r from-primary via-secondary to-accent shadow-[0_0_10px_rgba(124,58,237,0.5)]"
           />
         </div>
       </motion.div>
