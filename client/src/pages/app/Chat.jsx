@@ -52,9 +52,9 @@ export default function Chat() {
     fetchConversations();
   }, []);
 
-  const fetchConversations = async () => {
+  const fetchConversations = async (isSilent = false) => {
     try {
-      setLoading(true);
+      if (!isSilent) setLoading(true);
       const { data } = await api.get('/matches');
       setConversations(data.matches);
 
@@ -66,14 +66,14 @@ export default function Chat() {
       }
 
       // If URL has a specific match, select it
-      if (initialMatchId) {
+      if (initialMatchId && !selectedChat) {
         const match = data.matches.find(m => m._id === initialMatchId);
         if (match) handleSelectChat(match);
       }
     } catch (error) {
-      toast.error('Failed to load conversations');
+      if (!isSilent) toast.error('Failed to load conversations');
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
       // Pick 3 random suggestions
       const shuffled = [...aiSuggestions].sort(() => 0.5 - Math.random());
       setCurrentSuggestions(shuffled.slice(0, 3));
@@ -261,10 +261,12 @@ export default function Chat() {
       if (mediaData?.type === 'video') payload.videoUrl = mediaData.url;
 
       const { data } = await api.post(`/messages/${selectedChat._id}`, payload);
-      // Replace optimistic message with real one from DB
-      setMessages(prev => prev.map(m => m._id === tempId ? data.message : m));
-      // Update sidebar
-      fetchConversations();
+      // Replace optimistic message with real one from DB, but keep the optimistic ID as a marker 
+      // or just swap it. Using data.message._id is correct but we need to ensure the KEY in map doesn't change if possible
+      // Actually, standard practice is to swap it. The 'pop' happens because of framer-motion matching keys.
+      setMessages(prev => prev.map(m => m._id === tempId ? { ...data.message, _id: data.message._id, wasOptimistic: true } : m));
+      // Update sidebar silently
+      fetchConversations(true);
     } catch (error) {
       toast.error('Failed to send message');
       setMessages(prev => prev.filter(m => m._id !== tempId));
@@ -505,10 +507,12 @@ export default function Chat() {
               );
             }
 
+            const messageKey = msg.isOptimistic ? msg._id : (msg.wasOptimistic ? `opt-${msg._id}` : msg._id);
+
             return (
               <motion.div
                 key={msg._id}
-                initial={{ opacity: 0, y: 10 }}
+                initial={msg.wasOptimistic ? false : { opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.02 }}
                 className={`flex group items-start gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}
