@@ -12,6 +12,8 @@ export function SocketProvider({ children }) {
   const [socket, setSocket] = useState(null);
   const { user } = useAuth();
 
+  useEffect(() => {
+    if (user) {
       const PROD_URL = 'https://arlyon.onrender.com';
       const token = localStorage.getItem('arlyon_token');
       
@@ -27,6 +29,7 @@ export function SocketProvider({ children }) {
         auth: { token },
         query: { userId: user._id }
       });
+      
       setSocket(newSocket);
       return () => newSocket.close();
     } else {
@@ -36,13 +39,6 @@ export function SocketProvider({ children }) {
       }
     }
   }, [user]);
-
-  return (
-    <SocketContext.Provider value={{ socket }}>
-      {children}
-    </SocketContext.Provider>
-  );
-}
 
   return (
     <SocketContext.Provider value={{ socket }}>
