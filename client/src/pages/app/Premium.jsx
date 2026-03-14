@@ -91,7 +91,13 @@ export default function Premium() {
       paymentObject.open();
 
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to initiate payment');
+      console.error('Payment Initiation Error:', error);
+      const data = error.response?.data;
+      if (data) {
+        toast.error(`Error: ${data.message}${data.detail ? ` - ${data.detail}` : ''}`, { duration: 6000 });
+      } else {
+        toast.error('Network Error: Failed to initiate payment');
+      }
     } finally {
       setLoadingPlan(null);
     }

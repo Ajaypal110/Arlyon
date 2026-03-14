@@ -25,8 +25,8 @@ const PLANS = {
 };
 
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
+  key_id: process.env.RAZORPAY_KEY_ID || 'MISSING_KEY',
+  key_secret: process.env.RAZORPAY_KEY_SECRET || 'MISSING_SECRET',
 });
 
 // GET /api/subscriptions/plans
@@ -70,7 +70,12 @@ router.post('/create-order', protect, async (req, res) => {
     res.json({ success: true, order, key: process.env.RAZORPAY_KEY_ID });
   } catch (error) {
     console.error('Razorpay Order Error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    // Send back the specific Razorpay SDK error detail if it exists, otherwise the generic message
+    res.status(500).json({ 
+      success: false, 
+      message: error.error ? error.error.description : error.message,
+      detail: 'Make sure RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET are set in Render Environment Variables'
+    });
   }
 });
 
