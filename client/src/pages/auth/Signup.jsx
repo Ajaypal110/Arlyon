@@ -4,9 +4,11 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { Mail, Lock, User, Eye, EyeOff, Sparkles, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { GoogleLogin } from '@react-oauth/google';
+import api from '../../lib/api';
 
 export default function Signup() {
-  const { signup } = useAuth();
+  const { signup, updateUser } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' });
   const [showPassword, setShowPassword] = useState(false);
@@ -23,6 +25,22 @@ export default function Signup() {
       navigate('/onboarding');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Signup failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (response) => {
+    setLoading(true);
+    try {
+      const { data } = await api.post('/auth/google', { credential: response.credential });
+      localStorage.setItem('arlyon_token', data.token);
+      updateUser(data.user);
+      toast.success('Authenticated with Google!');
+      navigate(data.user.isOnboarded ? '/app' : '/onboarding');
+    } catch (err) {
+      console.error('Google Auth Error:', err);
+      toast.error('Google signup failed');
     } finally {
       setLoading(false);
     }
@@ -55,7 +73,7 @@ export default function Signup() {
           <h2 className="text-2xl font-display font-bold mb-2">Create your account</h2>
           <p className="text-dark-400 mb-8">Let's get you started on ARLYON</p>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-dark-300 mb-2">Full Name</label>
               <div className="relative">
@@ -92,7 +110,24 @@ export default function Signup() {
             </button>
           </form>
 
-          <p className="text-center text-sm text-dark-400 mt-8">
+          <div className="relative my-8">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-dark-700" /></div>
+            <div className="relative flex justify-center"><span className="bg-dark-900 px-4 text-sm text-dark-500">or continue with</span></div>
+          </div>
+
+          <div className="flex justify-center mb-6">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => toast.error('Google Signup Failed')}
+              theme="filled_black"
+              shape="pill"
+              size="large"
+              text="signup_with"
+              width="100%"
+            />
+          </div>
+
+          <p className="text-center text-sm text-dark-400">
             Already have an account?{' '}<Link to="/login" className="text-primary-400 hover:text-primary-300 font-medium transition-colors">Sign in</Link>
           </p>
         </motion.div>

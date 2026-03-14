@@ -3,6 +3,8 @@ import User from '../models/User.js';
 import { generateToken, generateRefreshToken, generateVerificationToken } from '../utils/helpers.js';
 import jwt from 'jsonwebtoken';
 import { protect } from '../middleware/auth.js';
+import { OAuth2Client } from 'google-auth-library';
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const router = express.Router();
 
@@ -146,6 +148,71 @@ router.post('/logout', protect, async (req, res) => {
   await req.user.save();
   res.clearCookie('refreshToken');
   res.json({ success: true, message: 'Logged out' });
+});
+
+// POST /api/auth/google
+router.post('/google', async (req, res) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) return res.status(400).json({ success: false, message: 'No Google credential provided' });
+
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name, picture } = payload;
+
+    let user = await User.findOne({ 
+      $or: [{ googleId }, { email }] 
+    });
+
+    if (user) {
+      // Update googleId if they had an email account but not linked to Google yet
+      if (!user.googleId) user.googleId = googleId;
+      if (!user.avatar) user.avatar = picture;
+      await user.save();
+    } else {
+      user = await User.create({
+        name,
+        email,
+        googleId,
+        avatar: picture,
+        isEmailVerified: true,
+      });
+    }
+
+    const token = generateToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+    user.refreshToken = refreshToken;
+    user.lastSeen = new Date();
+    await user.save();
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true, 
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 30 * 24 * 60 * 60 * 1000, 
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    });
+
+    res.json({
+      success: true,
+      token,
+      user: { 
+        _id: user._id, 
+        name: user.name, 
+        email: user.email, 
+        avatar: user.avatar, 
+        role: user.role, 
+        isOnboarded: user.isOnboarded, 
+        isPremium: user.isPremium 
+      },
+    });
+  } catch (error) {
+    console.error('Google Auth Error:', error);
+    res.status(500).json({ success: false, message: 'Google authentication failed' });
+  }
 });
 
 export default router;

@@ -32,6 +32,8 @@ import TermsOfService from './pages/public/policies/TermsOfService';
 import RefundPolicy from './pages/public/policies/RefundPolicy';
 import ContactUs from './pages/public/policies/ContactUs';
 
+import { GoogleOAuthProvider } from '@react-oauth/google';
+
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -40,8 +42,9 @@ const queryClient = new QueryClient({
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
         <AuthProvider>
           <SocketProvider>
             <CallProvider>
@@ -99,6 +102,7 @@ function App() {
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
+    </GoogleOAuthProvider>
   );
 }
 
