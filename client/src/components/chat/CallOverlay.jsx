@@ -54,10 +54,11 @@ export default function CallOverlay({
   isVideoMuted,
   isMinimized,
   onMinimize,
-  onMaximize
+  onMaximize,
+  partnerName
 }) {
   const remoteAudioRef = useRef();
-  const callerName = incomingCallData?.fromUser?.name || 'User';
+  const callerName = partnerName || incomingCallData?.fromUser?.name || 'User';
   const isVideoCall = activeCallType === 'video';
 
   // Persistent audio attachment for the remote person

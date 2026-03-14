@@ -104,40 +104,54 @@ export default function Chat() {
     if (!socket) return;
 
     const onConnect = () => {
-      console.log('Socket reconnected, joining rooms...');
+      console.log('Socket reconnected, joining match rooms...');
+      // Ensure all current conversations have joined rooms
       if (conversations.length > 0) {
         conversations.forEach(c => socket.emit('join_match', c._id));
       }
     };
 
     const handleNewMessage = (newMessage) => {
-      console.log('New message received via socket:', newMessage._id);
+      console.log('New message received via socket:', newMessage._id, 'Type:', newMessage.type);
       
       // Update conversations sidebar first regardless of which chat is open
-      setConversations(prev => prev.map(c => {
-        if (c._id === newMessage.match) {
-          return {
-            ...c,
-            lastMessage: newMessage,
-            unreadCount: (selectedChat?._id === c._id) ? c.unreadCount : (c.unreadCount + 1)
-          };
+      setConversations(prev => {
+        const conversationExists = prev.some(c => c._id === newMessage.match);
+        if (conversationExists) {
+          return prev.map(c => {
+            if (c._id === newMessage.match) {
+              return {
+                ...c,
+                lastMessage: newMessage,
+                unreadCount: (selectedChat?._id === c._id) ? c.unreadCount : (c.unreadCount + 1)
+              };
+            }
+            return c;
+          });
         }
-        return c;
-      }));
+        // If it's a new conversation, we might need to fetch them all again
+        fetchConversations();
+        return prev;
+      });
 
       // If the message belongs to the currently open chat, append it
       if (selectedChat && newMessage.match === selectedChat._id) {
-        // Avoid duplication
+        // Avoid duplication of regular messages we sent (as they are handled by fetch/optimistic update)
+        // BUT 'call' messages are ONLY server-side logs, so we MUST append them even if we are the 'sender'
         const senderId = String(newMessage.sender?._id || newMessage.sender);
-        if (senderId === String(user._id)) return;
+        const isMe = senderId === String(user._id);
+
+        if (isMe && newMessage.type !== 'call') return;
 
         setMessages(prev => {
           if (prev.some(m => m._id === newMessage._id)) return prev;
           return [...prev, newMessage];
         });
         
-        // Tell server it was read
-        api.put(`/messages/${newMessage._id}/read`).catch(() => {});
+        // Tell server it was read if we are not the sender
+        if (!isMe) {
+          api.put(`/messages/${newMessage._id}/read`).catch(() => {});
+        }
       } else {
         // Notification for background messages
         toast.success(`New message from match!`, { icon: '💬', duration: 3000 });
@@ -168,12 +182,32 @@ export default function Chat() {
       setMessages(prev => prev.map(m => m._id === updatedMsg._id ? updatedMsg : m));
     };
 
+    const handleUserOnline = ({ userId }) => {
+      setConversations(prev => prev.map(c => 
+        String(c.otherUser?._id) === String(userId) ? { ...c, otherUser: { ...c.otherUser, isOnline: true } } : c
+      ));
+      if (selectedChat && String(selectedChat.otherUser?._id) === String(userId)) {
+        setSelectedChat(prev => ({ ...prev, otherUser: { ...prev.otherUser, isOnline: true } }));
+      }
+    };
+
+    const handleUserOffline = ({ userId }) => {
+      setConversations(prev => prev.map(c => 
+        String(c.otherUser?._id) === String(userId) ? { ...c, otherUser: { ...c.otherUser, isOnline: false } } : c
+      ));
+      if (selectedChat && String(selectedChat.otherUser?._id) === String(userId)) {
+        setSelectedChat(prev => ({ ...prev, otherUser: { ...prev.otherUser, isOnline: false } }));
+      }
+    };
+
     socket.on('connect', onConnect);
     socket.on('new_message', handleNewMessage);
     socket.on('message_deleted', handleMessageDeleted);
     socket.on('message_edited', handleMessageEdited);
     socket.on('message_read', handleMessageRead);
     socket.on('messages_read', handleMessagesRead);
+    socket.on('user_online', handleUserOnline);
+    socket.on('user_offline', handleUserOffline);
 
     return () => {
       socket.off('connect', onConnect);
@@ -182,6 +216,8 @@ export default function Chat() {
       socket.off('message_edited', handleMessageEdited);
       socket.off('message_read', handleMessageRead);
       socket.off('messages_read', handleMessagesRead);
+      socket.off('user_online', handleUserOnline);
+      socket.off('user_offline', handleUserOffline);
     };
   }, [socket, selectedChat?._id, user._id, conversations.length]);
 
@@ -401,7 +437,7 @@ export default function Chat() {
                 if (!selectedChat.otherUser?.isOnline) {
                   toast.error(`${selectedChat.otherUser?.name} is offline. They might not receive the call.`);
                 }
-                startCall(selectedChat.otherUser._id, 'audio', selectedChat._id);
+                startCall(selectedChat.otherUser._id, 'audio', selectedChat._id, selectedChat.otherUser?.name);
               }}
               className="btn-ghost !p-2 transition-all hover:bg-primary/10 hover:text-primary active:scale-90"
               title="Voice Call"
@@ -413,7 +449,7 @@ export default function Chat() {
                 if (!selectedChat.otherUser?.isOnline) {
                   toast.error(`${selectedChat.otherUser?.name} is offline. They might not receive the call.`);
                 }
-                startCall(selectedChat.otherUser._id, 'video', selectedChat._id);
+                startCall(selectedChat.otherUser._id, 'video', selectedChat._id, selectedChat.otherUser?.name);
               }}
               className="btn-ghost !p-2 transition-all hover:bg-primary/10 hover:text-primary active:scale-90"
               title="Video Call"

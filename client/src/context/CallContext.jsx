@@ -16,6 +16,7 @@ export function CallProvider({ children }) {
   const [callState, setCallState] = useState('idle'); // idle, dialing, incoming, active
   const [incomingCallData, setIncomingCallData] = useState(null);
   const [activeCallPeer, setActiveCallPeer] = useState(null);
+  const [partnerName, setPartnerName] = useState('');
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
   const [isAudioMuted, setIsAudioMuted] = useState(false);
@@ -28,6 +29,7 @@ export function CallProvider({ children }) {
 
   const pcRef = useRef(null);
   const iceCandidateQueue = useRef([]);
+  const dialingTimeoutRef = useRef(null);
   // Refs for signaling stability
   const callStateRef = useRef('idle');
   const userRef = useRef(user);
@@ -52,6 +54,8 @@ export function CallProvider({ children }) {
     if (!socket) return;
 
     const handleIncomingCall = ({ from, fromUser, offer, type, matchId }) => {
+      const startTime = performance.now();
+      console.log(`[LATENCY] Incoming call received at ${startTime.toFixed(2)}ms`);
       console.log('Incoming call received in listener', { from, state: callStateRef.current });
       if (callStateRef.current !== 'idle') {
         console.log('Rejecting incoming call because state is not idle:', callStateRef.current);
@@ -60,16 +64,24 @@ export function CallProvider({ children }) {
       }
       setCallState('incoming');
       setIncomingCallData({ from, fromUser, offer, type, matchId });
+      setPartnerName(fromUser?.name || 'User');
       setActiveCallPeer(from);
       setActiveCallMatchId(matchId);
       setActiveCallType(type);
     };
 
     const handleCallAccepted = async ({ from, answer }) => {
+      const startTime = performance.now();
+      console.log(`[LATENCY] Call accepted received at ${startTime.toFixed(2)}ms`);
       console.log('Call accepted by remote:', from);
+      if (dialingTimeoutRef.current) {
+        clearTimeout(dialingTimeoutRef.current);
+        dialingTimeoutRef.current = null;
+      }
       if (pcRef.current) {
         try {
           await pcRef.current.setRemoteDescription(answer);
+          console.log(`[LATENCY] Remote description set at ${(performance.now() - startTime).toFixed(2)}ms`);
           setCallState('active');
           setCallStartTime(Date.now());
           toast.success('Call Connected');
@@ -97,6 +109,10 @@ export function CallProvider({ children }) {
 
     const handleCallRejected = () => {
       toast.error('Call Rejected');
+      if (dialingTimeoutRef.current) {
+        clearTimeout(dialingTimeoutRef.current);
+        dialingTimeoutRef.current = null;
+      }
       cleanupCall(); // Use cleanupCall directly for immediate local reset
     };
 
@@ -148,11 +164,12 @@ export function CallProvider({ children }) {
     return pc;
   };
 
-  const startCall = async (otherUserId, type = 'video', matchId) => {
+  const startCall = async (otherUserId, type = 'video', matchId, otherUserName) => {
     try {
       console.log('Initiating call to:', otherUserId);
       setCallState('dialing');
       setActiveCallPeer(otherUserId);
+      setPartnerName(otherUserName || 'User');
       setActiveCallMatchId(matchId);
       setActiveCallType(type);
 
@@ -169,6 +186,16 @@ export function CallProvider({ children }) {
       await pc.setLocalDescription(offer);
 
       socket.emit('call_user', { to: otherUserId, offer, type, matchId });
+
+      // Set 30s timeout for unanswered call
+      if (dialingTimeoutRef.current) clearTimeout(dialingTimeoutRef.current);
+      dialingTimeoutRef.current = setTimeout(() => {
+        if (callStateRef.current === 'dialing') {
+          console.log('Call timeout: No answer after 30s');
+          toast.error('No answer');
+          endCall();
+        }
+      }, 30000);
     } catch (err) {
       console.error('Failed to start call:', err);
       toast.error('Media Access Denied');
@@ -270,7 +297,10 @@ export function CallProvider({ children }) {
   };
 
   const cleanupCall = () => {
-    console.log('Cleaning up call state');
+    if (dialingTimeoutRef.current) {
+      clearTimeout(dialingTimeoutRef.current);
+      dialingTimeoutRef.current = null;
+    }
     if (localStream) {
       localStream.getTracks().forEach(track => track.stop());
     }
@@ -283,6 +313,7 @@ export function CallProvider({ children }) {
     setRemoteStream(null);
     setCallState('idle');
     setIncomingCallData(null);
+    setPartnerName('');
     setActiveCallPeer(null);
     setActiveCallMatchId(null);
     setActiveCallType(null);
@@ -321,6 +352,7 @@ export function CallProvider({ children }) {
       endCall, 
       callState, 
       incomingCallData,
+      partnerName,
       isMinimized,
       setIsMinimized,
       activeCallType
@@ -329,6 +361,7 @@ export function CallProvider({ children }) {
       <CallOverlay 
         callState={callState}
         incomingCallData={incomingCallData}
+        partnerName={partnerName}
         activeCallType={activeCallType}
         onAccept={acceptCall}
         onReject={rejectCall}
