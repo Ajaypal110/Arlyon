@@ -24,6 +24,7 @@ export function CallProvider({ children }) {
   const [activeCallMatchId, setActiveCallMatchId] = useState(null);
   const [activeCallType, setActiveCallType] = useState(null);
   const [callStartTime, setCallStartTime] = useState(null);
+  const [isMinimized, setIsMinimized] = useState(false);
 
   const pcRef = useRef(null);
   const iceCandidateQueue = useRef([]);
@@ -251,6 +252,7 @@ export function CallProvider({ children }) {
     setPeerConnection(null);
     setIsAudioMuted(false);
     setIsVideoMuted(false);
+    setIsMinimized(false);
   };
 
   const toggleAudio = () => {
@@ -274,7 +276,16 @@ export function CallProvider({ children }) {
   };
 
   return (
-    <CallContext.Provider value={{ startCall, acceptCall, rejectCall, endCall, callState, incomingCallData }}>
+    <CallContext.Provider value={{ 
+      startCall, 
+      acceptCall, 
+      rejectCall, 
+      endCall, 
+      callState, 
+      incomingCallData,
+      isMinimized,
+      setIsMinimized
+    }}>
       {children}
       <CallOverlay 
         callState={callState}
@@ -288,6 +299,9 @@ export function CallProvider({ children }) {
         onToggleVideo={toggleVideo}
         isAudioMuted={isAudioMuted}
         isVideoMuted={isVideoMuted}
+        isMinimized={isMinimized}
+        onMinimize={() => setIsMinimized(true)}
+        onMaximize={() => setIsMinimized(false)}
       />
     </CallContext.Provider>
   );
