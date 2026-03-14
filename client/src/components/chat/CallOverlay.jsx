@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 
 // Helper component to handle video stream attachment reliably
-const VideoBox = ({ stream, isMuted, className, autoPlay = true, playsInline = true }) => {
+const VideoBox = ({ stream, isMuted, className, isLocal, autoPlay = true, playsInline = true }) => {
   const videoRef = useRef();
 
   useEffect(() => {
@@ -29,7 +29,7 @@ const VideoBox = ({ stream, isMuted, className, autoPlay = true, playsInline = t
       ref={videoRef}
       autoPlay={autoPlay}
       playsInline={playsInline}
-      muted={stream.id === 'local' || autoPlay && stream.active} // Handled by caller usually, but safety first
+      muted={isLocal} // Only mute local stream to avoid audio feedback/echo
       className={className}
     />
   );
@@ -83,6 +83,7 @@ export default function CallOverlay({
         <VideoBox 
           stream={remoteStream} 
           isMuted={isVideoMuted} 
+          isLocal={false}
           className="w-full h-full object-cover" 
         />
         
@@ -91,6 +92,7 @@ export default function CallOverlay({
           <VideoBox 
             stream={localStream} 
             isMuted={isVideoMuted} 
+            isLocal={true}
             className="w-full h-full object-cover" 
             autoPlay 
             playsInline 
@@ -137,6 +139,7 @@ export default function CallOverlay({
                 <VideoBox 
                   stream={remoteStream} 
                   isMuted={isVideoMuted} 
+                  isLocal={false}
                   className="w-full h-full object-cover" 
                 />
               ) : (
@@ -168,6 +171,7 @@ export default function CallOverlay({
                 <VideoBox 
                   stream={localStream} 
                   isMuted={isVideoMuted} 
+                  isLocal={true}
                   className="w-full h-full object-cover" 
                 />
               </motion.div>
