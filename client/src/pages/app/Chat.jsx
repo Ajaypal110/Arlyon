@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Send, Smile, Image, Mic, ArrowLeft, Phone, Video, MoreVertical, Sparkles, Check, CheckCheck, User as UserIcon, MessageCircle, Edit2, Trash2, X, Crown, Video as VideoIcon, Phone as PhoneIcon } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Send, Smile, Image, Mic, ArrowLeft, Phone, Video, MoreVertical, Sparkles, Check, CheckCheck, User as UserIcon, MessageCircle, Edit2, Trash2, X, Crown, Video as VideoIcon, Phone as PhoneIcon, Plus, FileText, Camera, Users, BarChart2, Calendar, Sticker, Music, Contact } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
 import { useCall } from '../../context/CallContext';
@@ -39,6 +39,9 @@ export default function Chat() {
   const [pendingMedia, setPendingMedia] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [isSending, setIsSending] = useState(false);
+  const [showPlusMenu, setShowPlusMenu] = useState(false);
+  const plusMenuRef = useRef(null);
+  const plusButtonRef = useRef(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -46,6 +49,20 @@ export default function Chat() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Close plus menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (plusMenuRef.current && 
+          !plusMenuRef.current.contains(event.target) && 
+          plusButtonRef.current && 
+          !plusButtonRef.current.contains(event.target)) {
+        setShowPlusMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Load conversations (matches)
   useEffect(() => {
@@ -682,30 +699,102 @@ export default function Chat() {
           </motion.div>
         )}
 
-        {/* Input */}
-        <div className="px-3 md:px-6 py-3 md:py-4 border-t border-white/5 relative">
-          {showEmojiPicker && (
-            <div className="absolute bottom-full left-2 md:left-6 mb-2 z-50">
-              <EmojiPicker onEmojiClick={onEmojiClick} theme="dark" skinTonesDisabled searchDisabled previewConfig={{showPreview: false}} height={300} width={280} />
-            </div>
-          )}
+        {/* Input area - matching figure colors precisely */}
+        <div className="px-2 md:px-4 py-3 border-t border-white/5 bg-[#0b0d0f] relative">
+          <AnimatePresence>
+            {showPlusMenu && (
+              <motion.div 
+                ref={plusMenuRef}
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="absolute bottom-[calc(100%+12px)] left-2 md:left-4 w-72 bg-[#1c1c1e] border border-white/10 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-[100] overflow-hidden py-3"
+              >
+                <div className="grid grid-cols-1">
+                  {[
+                    { icon: FileText, label: 'Document', color: 'bg-indigo-500/20 text-indigo-400' },
+                    { icon: Image, label: 'Photos & videos', color: 'bg-blue-500/20 text-blue-400' },
+                    { icon: Camera, label: 'Camera', color: 'bg-pink-500/20 text-pink-500' },
+                    { icon: Music, label: 'Audio', color: 'bg-orange-500/20 text-orange-400' },
+                    { icon: Contact, label: 'Contact', color: 'bg-sky-500/20 text-sky-400' },
+                    { icon: BarChart2, label: 'Poll', color: 'bg-yellow-500/20 text-yellow-400' },
+                    { icon: Calendar, label: 'Event', color: 'bg-rose-500/20 text-rose-400' },
+                    { icon: Sticker, label: 'New sticker', color: 'bg-emerald-500/20 text-emerald-400' },
+                  ].map((item, idx) => (
+                    <button 
+                      key={idx} 
+                      className="flex items-center gap-4 px-5 py-2.5 hover:bg-white/5 transition-colors text-left"
+                      onClick={() => {
+                        if (item.label === 'Photos & videos') {
+                          fileInputRef.current.setAttribute('accept', 'image/*,video/*');
+                          fileInputRef.current.click();
+                        } else {
+                          toast(`Selected: ${item.label}`, { icon: '✨' });
+                        }
+                        setShowPlusMenu(false);
+                      }}
+                    >
+                      <div className={`p-2 rounded-lg ${item.color}`}>
+                        <item.icon className="w-5 h-5" />
+                      </div>
+                      <span className="text-sm font-medium text-dark-100">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*,video/*" className="hidden" />
           
-          <div className="flex items-center gap-1.5 md:gap-3">
-            <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className={`btn-ghost !p-1.5 md:!p-2 ${showEmojiPicker ? 'text-primary' : 'text-dark-400'}`}><Smile className="w-5 h-5" /></button>
-            <button onClick={() => { fileInputRef.current.setAttribute('accept', 'image/*'); fileInputRef.current.click(); }} disabled={isUploading} className={`btn-ghost !p-1.5 md:!p-2 text-dark-400 ${isUploading ? 'animate-pulse' : ''}`} title="Upload Image"><Image className="w-5 h-5" /></button>
-            <button onClick={() => { fileInputRef.current.setAttribute('accept', 'video/*'); fileInputRef.current.click(); }} disabled={isUploading} className={`btn-ghost !p-1.5 md:!p-2 text-dark-400 hidden md:inline-flex ${isUploading ? 'animate-pulse' : ''}`} title="Upload Video"><Video className="w-5 h-5" /></button>
-            <button onClick={() => setShowSuggestions(!showSuggestions)} className={`btn-ghost !p-1.5 md:!p-2 hidden md:inline-flex ${showSuggestions ? 'text-primary' : 'text-primary-400'}`} title="AI Suggestions"><Sparkles className="w-5 h-5" /></button>
-            <input
-              type="text" value={input} onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-              disabled={isUploading}
-              placeholder={isUploading ? "Uploading..." : `Message ${selectedChat?.otherUser?.name || '...' }...`} className="flex-1 input-field text-sm !py-2 md:!py-2.5 min-w-0"
-            />
-            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => sendMessage()} disabled={!input.trim() && (isUploading || isSending)}
-              className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-gradient-to-r from-primary to-secondary flex items-center justify-center text-white disabled:opacity-50 flex-shrink-0">
-              {editingMessage ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
-            </motion.button>
+          <div className="flex items-center gap-2">
+            <button 
+              ref={plusButtonRef}
+              onClick={() => setShowPlusMenu(!showPlusMenu)} 
+              className={`p-2 transition-all rounded-full ${showPlusMenu ? 'rotate-45 text-[#a855f7]' : 'text-[#a855f7] hover:bg-white/5'}`}
+            >
+              <Plus className="w-7 h-7" />
+            </button>
+
+            <div className="flex-1 bg-[#1c1c1e] rounded-full flex items-center px-4 gap-2 border border-white/5 focus-within:border-[#a855f7]/30 transition-all shadow-inner">
+              <button 
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)} 
+                className={`p-1.5 transition-colors ${showEmojiPicker ? 'text-[#a855f7]' : 'text-[#8e8e93] hover:text-white'}`}
+              >
+                <Smile className="w-6 h-6 outline-none" />
+              </button>
+              
+              <input
+                type="text" 
+                value={input} 
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+                disabled={isUploading}
+                placeholder={isUploading ? "Uploading..." : "Type a message"} 
+                className="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder-[#8e8e93] py-2.5 text-[15px] outline-none"
+              />
+
+              {!input.trim() && !isUploading && (
+                <button className="p-1.5 text-[#8e8e93] hover:text-white transition-colors">
+                  <Mic className="w-6 h-6 outline-none" />
+                </button>
+              )}
+            </div>
+
+            {(input.trim() || isUploading) && (
+              <motion.button 
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                whileHover={{ scale: 1.05 }} 
+                whileTap={{ scale: 0.95 }} 
+                onClick={() => sendMessage()} 
+                disabled={!input.trim() && (isUploading || isSending)}
+                className="w-11 h-11 rounded-full bg-[#a855f7] flex items-center justify-center text-white shadow-lg disabled:opacity-50 flex-shrink-0"
+              >
+                {editingMessage ? <Check className="w-6 h-6" /> : <Send className="w-5 h-5 ml-1" />}
+              </motion.button>
+            )}
           </div>
         </div>
       </div>
