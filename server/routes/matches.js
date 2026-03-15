@@ -1,6 +1,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import Match from '../models/Match.js';
+import Message from '../models/Message.js';
 import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -8,7 +9,6 @@ const router = express.Router();
 // GET /api/matches
 router.get('/', protect, async (req, res) => {
   try {
-    const Message = mongoose.model('Message');
     const matches = await Match.find({ users: req.user._id, isActive: true })
       .populate('users', 'name avatar age bio isOnline lastSeen photos isPremium')
       .sort({ updatedAt: -1 });
