@@ -100,7 +100,7 @@ export default function Discover() {
   const [filters, setFilters] = useState({
     minAge: 18,
     maxAge: 50,
-    distance: '50'
+    distance: 'Any'
   });
 
   useEffect(() => {
@@ -116,9 +116,10 @@ export default function Discover() {
         distance: filters.distance === 'Any' ? '99999' : filters.distance
       });
       const { data } = await api.get(`/users/discover?${params.toString()}`);
-      setUsers(data.users);
+      setUsers(data.users || []);
     } catch (error) {
-      toast.error('Failed to load profiles');
+      console.error('Discover load error:', error);
+      toast.error('Failed to load profiles. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -182,10 +183,18 @@ export default function Discover() {
           <h1 className="text-2xl font-display font-bold">Discover</h1>
           <p className="text-sm text-dark-400">{users.length} people nearby</p>
         </div>
-        <button onClick={() => setShowFilters(!showFilters)}
-          className="btn-ghost flex items-center gap-2 border border-dark-700 !rounded-xl">
-          <Filter className="w-4 h-4" /> Filters <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={fetchUsers} disabled={loading}
+            className="p-2.5 rounded-xl bg-dark-800 border border-dark-700 text-dark-400 hover:text-primary transition-colors disabled:opacity-50">
+            <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+          <button onClick={() => setShowFilters(!showFilters)}
+            className="btn-ghost flex items-center gap-2 border border-dark-700 !rounded-xl">
+            <Filter className="w-4 h-4" /> Filters <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -238,10 +247,13 @@ export default function Discover() {
             <h3 className="text-lg font-display font-semibold mb-2 text-dark-300">Finding people nearby...</h3>
           </motion.div>
         ) : users.length === 0 ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="card h-full flex flex-col items-center justify-center text-center">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="card h-full flex flex-col items-center justify-center text-center p-8">
             <Sparkles className="w-16 h-16 text-dark-600 mb-4" />
             <h3 className="text-xl font-display font-semibold mb-2">No More Profiles</h3>
-            <p className="text-dark-400 text-sm">Check back later or expand your filters</p>
+            <p className="text-dark-400 text-sm mb-6">Check back later or expand your filters to see more people nearby</p>
+            <button onClick={fetchUsers} className="btn-primary !rounded-xl !px-8">
+              Refresh Content
+            </button>
           </motion.div>
         ) : (
           <AnimatePresence>

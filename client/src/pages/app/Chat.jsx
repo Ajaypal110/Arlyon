@@ -390,9 +390,9 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-5rem)] md:h-[calc(100vh-5rem)] -mt-2 rounded-2xl overflow-hidden border border-white/5">
+    <div className="flex h-[calc(100dvh-5rem)] md:h-[calc(100vh-5rem)] -mt-2 md:rounded-2xl overflow-hidden border border-white/5 w-full min-w-0">
       {/* Conversation List Sidebar */}
-      <div className={`${selectedChat ? 'hidden md:flex' : 'flex'} w-full md:w-80 border-r border-white/5 bg-card/50 flex-col`}>
+      <div className={`${selectedChat ? 'hidden md:flex' : 'flex'} w-full md:w-80 border-r border-white/5 bg-card/50 flex-col shrink-0 overflow-hidden`}>
         <div className="p-4 border-b border-white/5">
           <h2 className="font-display font-bold text-lg">Messages</h2>
         </div>
@@ -444,13 +444,13 @@ export default function Chat() {
         </div>
       </div>
 
-      {/* Chat Area */}
-      <div className={`${selectedChat ? 'flex' : 'hidden md:flex'} flex-1 flex-col`}>
+        {/* Chat Area */}
+      <div className={`${selectedChat ? 'flex' : 'hidden md:flex'} flex-1 flex-col min-w-0 h-full overflow-hidden relative`}>
         {/* Header */}
         {selectedChat ? (
         <>
-          <div className="flex items-center justify-between px-3 md:px-6 py-3 md:py-4 border-b border-white/5 glass">
-            <div className="flex items-center gap-2 md:gap-3">
+          <div className="flex items-center justify-between px-3 md:px-6 py-3 md:py-4 border-b border-white/5 glass shrink-0 min-w-0">
+            <div className="flex items-center gap-2 md:gap-3 min-w-0">
               {/* Back button: mobile only */}
               <button onClick={handleBack} className="md:hidden p-1.5 -ml-1 rounded-lg hover:bg-white/5 text-dark-400 hover:text-white transition-colors">
                 <ArrowLeft className="w-5 h-5" />
@@ -503,12 +503,13 @@ export default function Chat() {
           </div>
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-3 md:px-6 py-3 md:py-4 space-y-3 md:space-y-4">
-          {/* Date separator */}
-          <div className="flex items-center gap-3 my-4">
+        {/* Messages container with strict structural fixes */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-8 py-4 w-full scroll-smooth min-w-0">
+          <div className="flex flex-col w-full min-h-full pb-10 min-w-0 gap-y-2.5">
+            {/* Date separator */}
+          <div className="flex items-center gap-3 my-4 min-w-0">
             <div className="flex-1 border-t border-dark-700" />
-            <span className="text-xs text-dark-500 bg-dark-900 px-3">Today</span>
+            <span className="text-[10px] uppercase tracking-wider text-dark-500 bg-dark-950 px-3 font-medium">Today</span>
             <div className="flex-1 border-t border-dark-700" />
           </div>
 
@@ -556,7 +557,7 @@ export default function Chat() {
                 initial={msg.wasOptimistic ? false : { opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.02 }}
-                className={`flex group items-start gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}
+                className={`flex group items-end gap-3 w-full min-w-0 shrink-0 ${isMe ? 'justify-end' : 'justify-start'}`}
               >
                 {isMe && !msg.isOptimistic && (
                   <div className="relative opacity-0 group-hover:opacity-100 transition-opacity">
@@ -587,10 +588,16 @@ export default function Chat() {
                   </div>
                 )}
                 
-                <div className={`${msg.content ? 'max-w-[85%] md:max-w-[70%] px-3 md:px-4 py-2.5 md:py-3' : 'max-w-[75%] md:max-w-[60%] p-1.5'} rounded-2xl text-sm leading-relaxed ${
+                <div className={`
+                  ${msg.content 
+                  ? 'max-w-[75%] md:max-w-[70%] px-3 md:px-4 py-2.5 md:py-3' 
+                  : 'max-w-[65%] md:max-w-[60%] p-1.5'} 
+                  rounded-2xl text-[14.5px] leading-relaxed break-words whitespace-pre-wrap 
+                  min-w-0 overflow-hidden shadow-sm
+                  ${
                   isMe
-                    ? 'bg-gradient-to-r from-primary to-primary-600 text-white rounded-br-md'
-                    : 'bg-dark-800 text-dark-100 rounded-bl-md'
+                  ? 'bg-gradient-to-r from-primary to-primary-600 text-white rounded-br-md self-end'
+                  : 'bg-dark-800 text-dark-100 rounded-bl-md self-start'
                 }`}>
                   {msg.imageUrl && (
                     <img 
@@ -607,8 +614,8 @@ export default function Chat() {
                       className={`rounded-lg ${msg.content ? 'mb-2' : ''} max-h-48 w-full bg-black`} 
                     />
                   )}
-                  {msg.content && <p>{msg.content}</p>}
-                  {!msg.content && !msg.imageUrl && !msg.videoUrl && msg.text && <p>{msg.text}</p>}
+                  {msg.content && <p className="break-words whitespace-pre-wrap">{msg.content}</p>}
+                  {!msg.content && !msg.imageUrl && !msg.videoUrl && msg.text && <p className="break-words whitespace-pre-wrap">{msg.text}</p>}
                   <div className={`flex items-center gap-2 mt-1 ${isMe ? 'justify-end' : ''} ${!msg.content ? 'px-2 pb-1' : ''}`}>
                     {msg.isEdited && <span className="text-[9px] text-white/40 italic">edited</span>}
                     <span className={`text-[10px] ${isMe ? 'text-white/60' : 'text-dark-500'}`}>
@@ -624,7 +631,8 @@ export default function Chat() {
               </motion.div>
             );
           })}
-          <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} className="h-2 shrink-0" />
+          </div>
         </div>
 
         {/* Media Preview Overlay */}
@@ -666,7 +674,7 @@ export default function Chat() {
         )}
 
         {/* AI Suggestions & Edit Mode */}
-        <div className="border-t border-white/5 bg-card/30">
+        <div className="border-t border-white/5 bg-card/30 shrink-0">
         {editingMessage && (
           <div className="px-3 md:px-6 py-2 flex items-center justify-between bg-primary/5">
             <div className="flex items-center gap-2 text-xs text-primary-300 italic">
@@ -700,7 +708,7 @@ export default function Chat() {
         )}
 
         {/* Input area - matching figure colors precisely */}
-        <div className="px-2 md:px-4 py-3 border-t border-white/5 bg-[#0b0d0f] relative">
+        <div className="px-2 md:px-4 pt-3 pb-6 md:pt-4 md:pb-8 border-t border-white/5 bg-[#0b0d0f] relative shrink-0 min-w-0">
           <AnimatePresence>
             {showPlusMenu && (
               <motion.div 
@@ -709,7 +717,7 @@ export default function Chat() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 10, scale: 0.95 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
-                className="absolute bottom-[calc(100%+12px)] left-2 md:left-4 w-72 bg-[#1c1c1e] border border-white/10 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-[100] overflow-hidden py-3"
+                className="absolute bottom-[calc(100%+12px)] left-2 md:left-4 w-72 bg-[#1c1c1e] border border-white/10 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-[100] max-h-[300px] overflow-y-auto py-2"
               >
                 <div className="grid grid-cols-1">
                   {[
@@ -744,11 +752,25 @@ export default function Chat() {
                 </div>
               </motion.div>
             )}
+            {showEmojiPicker && (
+              <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:transform-none z-[100] shadow-2xl max-w-[95vw]">
+                <EmojiPicker 
+                  onEmojiClick={(emojiData) => {
+                    setInput(prev => prev + emojiData.emoji);
+                    setShowEmojiPicker(false);
+                  }}
+                  theme="dark"
+                  lazyLoadEmojis={true}
+                  width="100%"
+                  height={window.innerWidth < 768 ? 350 : 400}
+                />
+              </div>
+            )}
           </AnimatePresence>
 
           <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*,video/*" className="hidden" />
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <button 
               ref={plusButtonRef}
               onClick={() => setShowPlusMenu(!showPlusMenu)} 
@@ -757,7 +779,7 @@ export default function Chat() {
               <Plus className="w-7 h-7" />
             </button>
 
-            <div className="flex-1 bg-[#1c1c1e] rounded-full flex items-center px-4 gap-2 border border-white/5 focus-within:border-[#a855f7]/30 transition-all shadow-inner">
+            <div className="flex-1 bg-[#1c1c1e] rounded-full flex items-center px-4 gap-2 border border-white/5 focus-within:border-[#a855f7]/30 transition-all shadow-inner min-w-0">
               <button 
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)} 
                 className={`p-1.5 transition-colors ${showEmojiPicker ? 'text-[#a855f7]' : 'text-[#8e8e93] hover:text-white'}`}
@@ -772,7 +794,7 @@ export default function Chat() {
                 onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
                 disabled={isUploading}
                 placeholder={isUploading ? "Uploading..." : "Type a message"} 
-                className="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder-[#8e8e93] py-2.5 text-[15px] outline-none"
+                className="flex-1 min-w-0 bg-transparent border-none focus:ring-0 text-white placeholder-[#8e8e93] py-2.5 text-[15px] outline-none"
               />
 
               {!input.trim() && !isUploading && (

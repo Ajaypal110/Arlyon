@@ -136,7 +136,7 @@ router.get('/discover', protect, async (req, res) => {
     }
 
     // Distance filter
-    if (distance && distance !== 'Any' && req.user.location?.coordinates) {
+    if (distance && distance !== 'Any' && distance !== '99999' && req.user.location?.coordinates?.length === 2) {
       const maxDist = parseInt(distance) * 1000; // km to meters
       filter.location = {
         $near: {
