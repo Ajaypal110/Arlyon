@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import api from '../../lib/api';
 
 function SwipeCard({ user, onSwipe, isTop }) {
+  const navigate = useNavigate();
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-15, 15]);
   const likeOpacity = useTransform(x, [0, 100], [0, 1]);
@@ -72,10 +73,9 @@ function SwipeCard({ user, onSwipe, isTop }) {
         </div>
       </div>
 
-      {/* Info */}
-      <div className="px-2">
+      <div className="px-2" onClick={() => navigate(`/app/profile/${user._id}`)}>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-xl font-display font-bold">{user.name}, {user.age}</h3>
+          <h3 className="text-xl font-display font-bold group-hover:text-primary transition-colors">{user.name}, {user.age}</h3>
           <div className="flex items-center gap-1 text-dark-400 text-sm">
             <MapPin className="w-3.5 h-3.5" /> {user.location.city}
           </div>
@@ -96,16 +96,26 @@ export default function Discover() {
   const [users, setUsers] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [limitReached, setLimitReached] = useState(null); // 'like' or 'superlike'
+  const [limitReached, setLimitReached] = useState(null);
+  const [filters, setFilters] = useState({
+    minAge: 18,
+    maxAge: 50,
+    distance: '50'
+  });
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [filters]);
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const { data } = await api.get('/users/discover');
+      const params = new URLSearchParams({
+        minAge: filters.minAge,
+        maxAge: filters.maxAge,
+        distance: filters.distance === 'Any' ? '99999' : filters.distance
+      });
+      const { data } = await api.get(`/users/discover?${params.toString()}`);
       setUsers(data.users);
     } catch (error) {
       toast.error('Failed to load profiles');
@@ -165,7 +175,7 @@ export default function Discover() {
   };
 
   return (
-    <div className="max-w-lg mx-auto space-y-6">
+    <div className="max-w-lg mx-auto space-y-4 md:space-y-6 px-2 md:px-0">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -186,13 +196,34 @@ export default function Discover() {
               <div>
                 <label className="text-sm text-dark-400 mb-1 block">Age Range</label>
                 <div className="flex gap-2">
-                  <input type="number" placeholder="18" className="input-field text-sm !py-2" />
-                  <input type="number" placeholder="35" className="input-field text-sm !py-2" />
+                  <input
+                    type="number"
+                    value={filters.minAge}
+                    onChange={(e) => setFilters(prev => ({ ...prev, minAge: e.target.value }))}
+                    placeholder="18"
+                    className="input-field text-sm !py-2"
+                  />
+                  <input
+                    type="number"
+                    value={filters.maxAge}
+                    onChange={(e) => setFilters(prev => ({ ...prev, maxAge: e.target.value }))}
+                    placeholder="50"
+                    className="input-field text-sm !py-2"
+                  />
                 </div>
               </div>
               <div>
                 <label className="text-sm text-dark-400 mb-1 block">Distance</label>
-                <select className="input-field text-sm !py-2"><option>50 km</option><option>100 km</option><option>Any</option></select>
+                <select
+                  value={filters.distance}
+                  onChange={(e) => setFilters(prev => ({ ...prev, distance: e.target.value }))}
+                  className="input-field text-sm !py-2"
+                >
+                  <option value="50">50 km</option>
+                  <option value="100">100 km</option>
+                  <option value="250">250 km</option>
+                  <option value="Any">Any</option>
+                </select>
               </div>
             </div>
           </motion.div>
@@ -200,7 +231,7 @@ export default function Discover() {
       </AnimatePresence>
 
       {/* Swipe Area */}
-      <div className="relative h-[520px]">
+      <div className="relative h-[calc(100vh-18rem)] md:h-[520px]">
         {loading ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="card h-full flex flex-col items-center justify-center text-center">
             <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />

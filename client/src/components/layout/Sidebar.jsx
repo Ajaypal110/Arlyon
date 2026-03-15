@@ -67,7 +67,7 @@ export default function Sidebar() {
       initial={{ x: -280 }}
       animate={{ x: 0, width: collapsed ? 72 : 260 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
-      className="fixed left-0 top-0 h-screen z-40 flex flex-col glass border-r border-white/5"
+      className="fixed left-0 top-0 h-screen z-40 hidden md:flex flex-col glass border-r border-white/5"
     >
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-white/5">

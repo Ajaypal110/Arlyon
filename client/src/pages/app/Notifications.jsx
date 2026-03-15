@@ -73,11 +73,11 @@ export default function Notifications() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
+    <div className="max-w-3xl mx-auto px-1 py-4 md:px-4 md:py-8">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-display font-bold text-white flex items-center gap-3">
+          <h1 className="text-2xl md:text-3xl font-display font-bold text-white flex items-center gap-2 md:gap-3">
             <div className="p-2 rounded-xl bg-primary/20 text-primary">
               <Bell className="w-6 h-6" />
             </div>

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Smile, Image, Mic, ArrowLeft, Phone, Video, MoreVertical, Sparkles, Check, CheckCheck, User as UserIcon, MessageCircle, Edit2, Trash2, X, Crown } from 'lucide-react';
+import { Send, Smile, Image, Mic, ArrowLeft, Phone, Video, MoreVertical, Sparkles, Check, CheckCheck, User as UserIcon, MessageCircle, Edit2, Trash2, X, Crown, Video as VideoIcon, Phone as PhoneIcon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
 import { useCall } from '../../context/CallContext';
@@ -261,9 +261,6 @@ export default function Chat() {
       if (mediaData?.type === 'video') payload.videoUrl = mediaData.url;
 
       const { data } = await api.post(`/messages/${selectedChat._id}`, payload);
-      // Replace optimistic message with real one from DB, but keep the optimistic ID as a marker 
-      // or just swap it. Using data.message._id is correct but we need to ensure the KEY in map doesn't change if possible
-      // Actually, standard practice is to swap it. The 'pop' happens because of framer-motion matching keys.
       setMessages(prev => prev.map(m => m._id === tempId ? { ...data.message, _id: data.message._id, wasOptimistic: true } : m));
       // Update sidebar silently
       fetchConversations(true);
@@ -367,10 +364,18 @@ export default function Chat() {
     }
   };
 
+  // Mobile: back to list
+  const handleBack = () => {
+    setSelectedChat(null);
+    setMessages([]);
+    setShowEmojiPicker(false);
+    setShowSuggestions(false);
+  };
+
   return (
-    <div className="flex h-[calc(100vh-5rem)] -mt-2 rounded-2xl overflow-hidden border border-white/5">
-      {/* Sidebar */}
-      <div className="w-80 border-r border-white/5 bg-card/50 flex flex-col">
+    <div className="flex h-[calc(100vh-5rem)] md:h-[calc(100vh-5rem)] -mt-2 rounded-2xl overflow-hidden border border-white/5">
+      {/* Conversation List Sidebar */}
+      <div className={`${selectedChat ? 'hidden md:flex' : 'flex'} w-full md:w-80 border-r border-white/5 bg-card/50 flex-col`}>
         <div className="p-4 border-b border-white/5">
           <h2 className="font-display font-bold text-lg">Messages</h2>
         </div>
@@ -381,8 +386,8 @@ export default function Chat() {
             <div className="p-8 text-center text-dark-400 text-sm">No conversations yet.<br/>Start matching!</div>
           ) : conversations.map(c => (
             <button key={c._id} onClick={() => handleSelectChat(c)}
-              className={`flex items-center gap-3 w-full px-4 py-3.5 transition-all ${selectedChat?._id === c._id ? 'bg-primary/10 border-l-2 border-primary' : 'hover:bg-white/5'}`}>
-              <div className="relative">
+              className={`flex items-center gap-2 md:gap-3 w-full px-2 md:px-4 py-3 transition-all ${selectedChat?._id === c._id ? 'bg-primary/10 border-l-2 border-primary' : 'hover:bg-white/5'} overflow-hidden`}>
+              <div className="relative flex-shrink-0">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/30 to-secondary/30 flex items-center justify-center text-lg overflow-hidden">
                   {c.otherUser?.avatar ? (
                     (c.otherUser.avatar.startsWith('http') || c.otherUser.avatar.startsWith('data:')) ? (
@@ -412,7 +417,7 @@ export default function Chat() {
                         {c.lastMessage.callData?.status === 'missed' ? 'Missed Call' : 'Call ended'}
                       </span>
                     ) : (
-                      c.lastMessage.text || (c.lastMessage.imageUrl ? '📷 Photo' : c.lastMessage.videoUrl ? '🎥 Video' : 'Message')
+                      c.lastMessage.content || (c.lastMessage.imageUrl ? '📷 Photo' : c.lastMessage.videoUrl ? '🎥 Video' : 'Message')
                     )
                   ) : 'Start chatting! 👋'}
                 </p>
@@ -423,13 +428,17 @@ export default function Chat() {
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className={`${selectedChat ? 'flex' : 'hidden md:flex'} flex-1 flex-col`}>
         {/* Header */}
         {selectedChat ? (
         <>
-          <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 glass">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/30 to-secondary/30 flex items-center justify-center text-lg overflow-hidden">
+          <div className="flex items-center justify-between px-3 md:px-6 py-3 md:py-4 border-b border-white/5 glass">
+            <div className="flex items-center gap-2 md:gap-3">
+              {/* Back button: mobile only */}
+              <button onClick={handleBack} className="md:hidden p-1.5 -ml-1 rounded-lg hover:bg-white/5 text-dark-400 hover:text-white transition-colors">
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-primary/30 to-secondary/30 flex items-center justify-center text-lg overflow-hidden">
                 {selectedChat.otherUser?.avatar ? (
                   (selectedChat.otherUser.avatar.startsWith('http') || selectedChat.otherUser.avatar.startsWith('data:')) ? (
                     <img src={selectedChat.otherUser.avatar} alt="Profile" className="w-full h-full object-cover" />
@@ -448,7 +457,7 @@ export default function Chat() {
                 <p className="text-xs text-green-400">{selectedChat.otherUser?.isOnline ? 'Online' : 'Offline'}</p>
               </div>
             </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 md:gap-2">
             <button 
               onClick={() => {
                 if (!selectedChat.otherUser?.isOnline) {
@@ -473,12 +482,12 @@ export default function Chat() {
             >
               <Video className="w-4 h-4" />
             </button>
-            <button className="btn-ghost !p-2"><MoreVertical className="w-4 h-4" /></button>
+            <button className="btn-ghost !p-2 hidden md:inline-flex"><MoreVertical className="w-4 h-4" /></button>
           </div>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-3 md:px-6 py-3 md:py-4 space-y-3 md:space-y-4">
           {/* Date separator */}
           <div className="flex items-center gap-3 my-4">
             <div className="flex-1 border-t border-dark-700" />
@@ -500,8 +509,8 @@ export default function Chat() {
 
               return (
                 <div key={msg._id} className="flex justify-center my-4">
-                  <div className="bg-dark-800/50 backdrop-blur-sm border border-white/5 rounded-2xl px-6 py-3 flex items-center gap-4 max-w-[80%]">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${status === 'missed' ? 'bg-red-500/10 text-red-500' : 'bg-primary/10 text-primary'}`}>
+                  <div className="bg-dark-800/50 backdrop-blur-sm border border-white/5 rounded-2xl px-4 md:px-6 py-3 flex items-center gap-3 md:gap-4 max-w-[90%] md:max-w-[80%]">
+                    <div className={`w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center ${status === 'missed' ? 'bg-red-500/10 text-red-500' : 'bg-primary/10 text-primary'}`}>
                       {type === 'video' ? <Video className="w-5 h-5" /> : <Phone className="w-5 h-5" />}
                     </div>
                     <div>
@@ -561,7 +570,7 @@ export default function Chat() {
                   </div>
                 )}
                 
-                <div className={`${msg.content ? 'max-w-[70%] px-4 py-3' : 'max-w-[60%] p-1.5'} rounded-2xl text-sm leading-relaxed ${
+                <div className={`${msg.content ? 'max-w-[85%] md:max-w-[70%] px-3 md:px-4 py-2.5 md:py-3' : 'max-w-[75%] md:max-w-[60%] p-1.5'} rounded-2xl text-sm leading-relaxed ${
                   isMe
                     ? 'bg-gradient-to-r from-primary to-primary-600 text-white rounded-br-md'
                     : 'bg-dark-800 text-dark-100 rounded-bl-md'
@@ -603,17 +612,17 @@ export default function Chat() {
 
         {/* Media Preview Overlay */}
         {pendingMedia && (
-          <div className="absolute inset-0 z-[60] bg-dark-950/90 backdrop-blur-sm flex flex-col items-center justify-center p-6">
+          <div className="absolute inset-0 z-[60] bg-dark-950/90 backdrop-blur-sm flex flex-col items-center justify-center p-4 md:p-6">
             <div className="max-w-md w-full bg-dark-900 rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
               <div className="p-4 border-b border-white/5 flex justify-between items-center">
                 <h4 className="font-medium text-sm">Preview Attachment</h4>
                 <button onClick={() => setPendingMedia(null)} className="p-1 hover:bg-white/5 rounded-full"><X className="w-4 h-4" /></button>
               </div>
-              <div className="p-4 flex items-center justify-center bg-black/40 min-h-[300px]">
+              <div className="p-4 flex items-center justify-center bg-black/40 min-h-[200px] md:min-h-[300px]">
                 {pendingMedia.type === 'video' ? (
-                  <video src={pendingMedia.preview} controls className="max-h-[400px] w-full" />
+                  <video src={pendingMedia.preview} controls className="max-h-[300px] md:max-h-[400px] w-full" />
                 ) : (
-                  <img src={pendingMedia.preview} alt="Preview" className="max-h-[400px] object-contain rounded-lg" />
+                  <img src={pendingMedia.preview} alt="Preview" className="max-h-[300px] md:max-h-[400px] object-contain rounded-lg" />
                 )}
               </div>
               <div className="p-4 border-t border-white/5 flex gap-3">
@@ -642,7 +651,7 @@ export default function Chat() {
         {/* AI Suggestions & Edit Mode */}
         <div className="border-t border-white/5 bg-card/30">
         {editingMessage && (
-          <div className="px-6 py-2 flex items-center justify-between bg-primary/5">
+          <div className="px-3 md:px-6 py-2 flex items-center justify-between bg-primary/5">
             <div className="flex items-center gap-2 text-xs text-primary-300 italic">
               <Edit2 className="w-3 h-3" /> Editing message...
             </div>
@@ -652,7 +661,7 @@ export default function Chat() {
           </div>
         )}
         {showSuggestions && !editingMessage && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="px-6 py-3">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="px-3 md:px-6 py-3">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2 text-xs text-primary-300"><Sparkles className="w-3 h-3" /> AI Icebreakers</div>
               <button 
@@ -674,27 +683,27 @@ export default function Chat() {
         )}
 
         {/* Input */}
-        <div className="px-6 py-4 border-t border-white/5 relative">
+        <div className="px-3 md:px-6 py-3 md:py-4 border-t border-white/5 relative">
           {showEmojiPicker && (
-            <div className="absolute bottom-full left-6 mb-2 z-50">
-              <EmojiPicker onEmojiClick={onEmojiClick} theme="dark" skinTonesDisabled searchDisabled previewConfig={{showPreview: false}} height={350} width={300} />
+            <div className="absolute bottom-full left-2 md:left-6 mb-2 z-50">
+              <EmojiPicker onEmojiClick={onEmojiClick} theme="dark" skinTonesDisabled searchDisabled previewConfig={{showPreview: false}} height={300} width={280} />
             </div>
           )}
           <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*,video/*" className="hidden" />
           
-          <div className="flex items-center gap-3">
-            <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className={`btn-ghost !p-2 ${showEmojiPicker ? 'text-primary' : 'text-dark-400'}`}><Smile className="w-5 h-5" /></button>
-            <button onClick={() => { fileInputRef.current.setAttribute('accept', 'image/*'); fileInputRef.current.click(); }} disabled={isUploading} className={`btn-ghost !p-2 text-dark-400 ${isUploading ? 'animate-pulse' : ''}`} title="Upload Image"><Image className="w-5 h-5" /></button>
-            <button onClick={() => { fileInputRef.current.setAttribute('accept', 'video/*'); fileInputRef.current.click(); }} disabled={isUploading} className={`btn-ghost !p-2 text-dark-400 ${isUploading ? 'animate-pulse' : ''}`} title="Upload Video"><Video className="w-5 h-5" /></button>
-            <button onClick={() => setShowSuggestions(!showSuggestions)} className={`btn-ghost !p-2 ${showSuggestions ? 'text-primary' : 'text-primary-400'}`} title="AI Suggestions"><Sparkles className="w-5 h-5" /></button>
+          <div className="flex items-center gap-1.5 md:gap-3">
+            <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className={`btn-ghost !p-1.5 md:!p-2 ${showEmojiPicker ? 'text-primary' : 'text-dark-400'}`}><Smile className="w-5 h-5" /></button>
+            <button onClick={() => { fileInputRef.current.setAttribute('accept', 'image/*'); fileInputRef.current.click(); }} disabled={isUploading} className={`btn-ghost !p-1.5 md:!p-2 text-dark-400 ${isUploading ? 'animate-pulse' : ''}`} title="Upload Image"><Image className="w-5 h-5" /></button>
+            <button onClick={() => { fileInputRef.current.setAttribute('accept', 'video/*'); fileInputRef.current.click(); }} disabled={isUploading} className={`btn-ghost !p-1.5 md:!p-2 text-dark-400 hidden md:inline-flex ${isUploading ? 'animate-pulse' : ''}`} title="Upload Video"><Video className="w-5 h-5" /></button>
+            <button onClick={() => setShowSuggestions(!showSuggestions)} className={`btn-ghost !p-1.5 md:!p-2 hidden md:inline-flex ${showSuggestions ? 'text-primary' : 'text-primary-400'}`} title="AI Suggestions"><Sparkles className="w-5 h-5" /></button>
             <input
               type="text" value={input} onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
               disabled={isUploading}
-              placeholder={isUploading ? "Uploading..." : `Message ${selectedChat?.otherUser?.name || '...' }...`} className="flex-1 input-field text-sm !py-2.5"
+              placeholder={isUploading ? "Uploading..." : `Message ${selectedChat?.otherUser?.name || '...' }...`} className="flex-1 input-field text-sm !py-2 md:!py-2.5 min-w-0"
             />
             <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => sendMessage()} disabled={!input.trim() && (isUploading || isSending)}
-              className="w-10 h-10 rounded-xl bg-gradient-to-r from-primary to-secondary flex items-center justify-center text-white disabled:opacity-50">
+              className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-gradient-to-r from-primary to-secondary flex items-center justify-center text-white disabled:opacity-50 flex-shrink-0">
               {editingMessage ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
             </motion.button>
           </div>
@@ -704,10 +713,10 @@ export default function Chat() {
         {/* Full Screen Image Preview Overlay */}
         {previewImage && (
           <div className="absolute inset-0 z-[70] bg-black/95 flex flex-col items-center justify-center p-4">
-            <div className="absolute top-6 right-6 flex items-center gap-4">
+            <div className="absolute top-4 right-4 md:top-6 md:right-6 flex items-center gap-3 md:gap-4">
               <button 
                 onClick={() => downloadMedia(previewImage, `arlyon-image-${Date.now()}.jpg`)} 
-                className="btn-primary !px-4 !py-2 rounded-xl flex items-center gap-2"
+                className="btn-primary !px-3 !py-1.5 md:!px-4 md:!py-2 rounded-xl flex items-center gap-2 text-sm"
               >
                 <Image className="w-4 h-4" /> Download
               </button>

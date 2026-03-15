@@ -7,14 +7,31 @@ const router = express.Router();
 // GET /api/matches
 router.get('/', protect, async (req, res) => {
   try {
+    const Message = mongoose.model('Message');
     const matches = await Match.find({ users: req.user._id, isActive: true })
-      .populate('users', 'name avatar age bio isOnline lastSeen photos')
+      .populate('users', 'name avatar age bio isOnline lastSeen photos isPremium')
       .sort({ updatedAt: -1 });
 
-    const formatted = matches.map(m => {
+    const formatted = await Promise.all(matches.map(async (m) => {
       const otherUser = m.users.find(u => u._id.toString() !== req.user._id.toString());
-      return { ...m.toObject(), otherUser };
-    });
+      
+      const lastMessage = await Message.findOne({ match: m._id })
+        .sort({ createdAt: -1 })
+        .lean();
+
+      const unreadCount = await Message.countDocuments({
+        match: m._id,
+        sender: { $ne: req.user._id },
+        readBy: { $ne: req.user._id }
+      });
+
+      return { 
+        ...m.toObject(), 
+        otherUser,
+        lastMessage,
+        unreadCount
+      };
+    }));
 
     res.json({ success: true, matches: formatted });
   } catch (error) {

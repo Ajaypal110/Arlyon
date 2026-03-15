@@ -70,10 +70,11 @@ function App() {
                     <Route path="discover" element={<Discover />} />
                     <Route path="matches" element={<Matches />} />
                     <Route path="chat" element={<Chat />} />
-                    <Route path="profile" element={<Profile />} />
+                    <Route path="profile/:id?" element={<Profile />} />
                     <Route path="settings" element={<Settings />} />
                     <Route path="premium" element={<Premium />} />
                     <Route path="notifications" element={<Notifications />} />
+                    <Route path="dashboard" element={<Navigate to="/app" replace />} />
                   </Route>
 
                   {/* Admin */}

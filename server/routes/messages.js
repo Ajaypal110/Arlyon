@@ -44,6 +44,9 @@ router.post('/:matchId', protect, async (req, res) => {
       readBy: [req.user._id],
     });
 
+    // Update Match updatedAt to bring it to top of list
+    await Match.findByIdAndUpdate(req.params.matchId, { updatedAt: new Date() });
+
     const populated = await message.populate('sender', 'name avatar');
 
     // Emit via socket

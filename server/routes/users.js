@@ -74,7 +74,12 @@ router.post('/onboarding', protect, async (req, res) => {
     if (dateOfBirth) {
       const today = new Date();
       const birth = new Date(dateOfBirth);
-      user.age = today.getFullYear() - birth.getFullYear();
+      let age = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      user.age = Math.max(0, Math.min(100, age)); // Sanity check
     }
     user.calculateProfileCompletion();
     await user.save();
@@ -105,7 +110,7 @@ router.post('/avatar', protect, async (req, res) => {
 // GET /api/users/discover
 router.get('/discover', protect, async (req, res) => {
   try {
-    const { minAge, maxAge, gender, interests, page = 1, limit = 10 } = req.query;
+    const { minAge, maxAge, gender, distance, page = 1, limit = 10 } = req.query;
     const userId = req.user._id;
 
     // Get users already liked/passed
@@ -118,13 +123,30 @@ router.get('/discover', protect, async (req, res) => {
       isBanned: false,
     };
 
-    if (gender && gender !== 'everyone') filter.gender = gender;
-    else if (req.user.genderPreference !== 'everyone') filter.gender = req.user.genderPreference;
+    if (gender && gender !== 'everyone') {
+      filter.gender = gender;
+    } else if (req.user.genderPreference !== 'everyone') {
+      filter.gender = req.user.genderPreference;
+    }
 
     if (minAge || maxAge) {
       filter.age = {};
       if (minAge) filter.age.$gte = parseInt(minAge);
       if (maxAge) filter.age.$lte = parseInt(maxAge);
+    }
+
+    // Distance filter
+    if (distance && distance !== 'Any' && req.user.location?.coordinates) {
+      const maxDist = parseInt(distance) * 1000; // km to meters
+      filter.location = {
+        $near: {
+          $geometry: {
+            type: 'Point',
+            coordinates: req.user.location.coordinates
+          },
+          $maxDistance: maxDist
+        }
+      };
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);

@@ -37,24 +37,31 @@ export default function Matches() {
   const newMatches = matches.filter(m => !m.lastMessage);
   const activeConversations = matches.filter(m => m.lastMessage);
   
-  const filtered = activeConversations.filter(m => m.otherUser?.name?.toLowerCase().includes(search.toLowerCase()));
+  const filteredNewMatches = newMatches.filter(m => m.otherUser?.name?.toLowerCase().includes(search.toLowerCase()));
+  const filteredConversations = activeConversations.filter(m => m.otherUser?.name?.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-display font-bold">Matches & Activity</h1>
-          <p className="text-sm text-dark-400 mt-1">{matches.length} matches · {likesYou.length} likes</p>
+    <div className="max-w-3xl mx-auto space-y-4 md:space-y-6 px-3 md:px-0 w-full overflow-x-hidden">
+      <div className="flex items-center justify-between min-w-0">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl md:text-2xl font-display font-bold text-balance truncate">
+            <span className="md:hidden">Activity</span>
+            <span className="hidden md:inline">Matches & Activity</span>
+          </h1>
+          <p className="text-[10px] md:text-sm text-dark-400 mt-0.5">{matches.length} matches · {likesYou.length} likes</p>
         </div>
       </div>
 
       {/* Likes You Section (Premium Gated) */}
-      <div className="card !bg-transparent !border-none !p-0">
-        <h3 className="text-sm font-semibold text-dark-300 mb-4 flex items-center justify-between">
-          <span className="flex items-center gap-2"><Heart className="w-4 h-4 text-secondary" /> Likes You</span>
+      <div className="card !bg-transparent !border-none !p-0 overflow-hidden w-full min-w-0">
+        <h3 className="text-sm font-semibold text-dark-300 mb-4 flex items-center justify-between min-w-0 pr-1">
+          <span className="flex items-center gap-1.5 flex-shrink-0 min-w-0">
+            <Heart className="w-3.5 h-3.5 text-secondary flex-shrink-0" />
+            <span className="truncate">Likes</span>
+          </span>
           {!currentUser?.isPremium && (
-            <button onClick={() => navigate('/app/premium')} className="text-[11px] font-bold text-amber-500 uppercase tracking-widest hover:underline">
-              Upgrade to see
+            <button onClick={() => navigate('/app/premium')} className="text-[9px] font-bold text-amber-500 uppercase tracking-tight hover:underline flex-shrink-0 ml-1 pr-1 truncate max-w-[60px]">
+              Upgrade
             </button>
           )}
         </h3>
@@ -95,23 +102,24 @@ export default function Matches() {
       </div>
 
       {/* New Matches */}
-      {newMatches.length > 0 && (
-        <div className="card">
-          <h3 className="text-sm font-semibold text-dark-300 mb-4 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-400" /> New Matches
+      {filteredNewMatches.length > 0 && (
+        <div className="card min-w-0">
+          <h3 className="text-sm font-semibold text-dark-300 mb-4 flex items-center gap-2 min-w-0">
+            <Sparkles className="w-4 h-4 text-amber-400 flex-shrink-0" />
+            <span className="truncate">New Matches</span>
           </h3>
-          <div className="flex gap-4 overflow-x-auto pb-2">
-            {newMatches.map((m, i) => (
-              <Link to={`/app/chat?match=${m._id}`} key={m._id}>
+          <div className="flex gap-4 overflow-x-auto pb-2 min-w-0 scrollbar-hide">
+            {filteredNewMatches.map((m, i) => (
+              <Link to={`/app/chat?match=${m._id}`} key={m._id} className="flex-shrink-0">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: i * 0.1 }}
-                  className="flex flex-col items-center gap-2 min-w-[80px] cursor-pointer group"
+                  className="flex flex-col items-center gap-2 min-w-[70px] cursor-pointer group"
                 >
-                  <div className="relative">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary via-secondary to-accent p-[2px]">
-                      <div className="w-full h-full rounded-full bg-card flex items-center justify-center text-2xl group-hover:scale-110 transition-all overflow-hidden">
+                  <div className="relative" onClick={(e) => { e.preventDefault(); navigate(`/app/profile/${m.otherUser?._id}`); }}>
+                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary via-secondary to-accent p-[2px]">
+                      <div className="w-full h-full rounded-full bg-card flex items-center justify-center text-xl group-hover:scale-110 transition-all overflow-hidden text-white font-bold">
                         {m.otherUser?.avatar ? (
                           (m.otherUser.avatar.startsWith('http') || m.otherUser.avatar.startsWith('data:')) ? (
                             <img src={m.otherUser.avatar} alt="Profile" className="w-full h-full object-cover" />
@@ -119,13 +127,13 @@ export default function Matches() {
                             m.otherUser.avatar
                           )
                         ) : (
-                          <UserIcon className="w-8 h-8 text-dark-600" />
+                          <UserIcon className="w-6 h-6 text-dark-600" />
                         )}
                       </div>
                     </div>
-                    {m.otherUser?.isOnline && <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-green-500 border-2 border-card" />}
+                    {m.otherUser?.isOnline && <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-green-500 border-2 border-card" />}
                   </div>
-                  <span className="text-xs text-dark-300 font-medium">{m.otherUser?.name?.split(' ')[0]}</span>
+                  <span className="text-[10px] text-dark-300 font-medium truncate w-[70px] text-center">{m.otherUser?.name?.split(' ')[0]}</span>
                 </motion.div>
               </Link>
             ))}
@@ -134,24 +142,31 @@ export default function Matches() {
       )}
 
       {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500" />
-        <input type="text" placeholder="Search matches..." value={search} onChange={(e) => setSearch(e.target.value)} className="input-field !pl-11 text-sm" />
+      <div className="relative group w-full min-w-0">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500 group-focus-within:text-primary transition-colors" />
+        <input
+          type="text"
+          placeholder="Search matches..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="input-field !pl-10 text-sm w-full"
+        />
       </div>
 
       {/* Match List */}
-      <div className="space-y-2">
+      <div className="space-y-2 pb-6">
         {loading ? (
           <div className="flex justify-center p-8"><div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" /></div>
-        ) : filtered.map((m, i) => (
+        ) : filteredConversations.map((m, i) => (
           <motion.div
             key={m._id}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
+            className="w-full overflow-hidden"
           >
-            <Link to={`/app/chat?match=${m._id}`} className="flex items-center gap-4 p-4 rounded-xl hover:bg-white/5 transition-all group cursor-pointer">
-              <div className="relative flex-shrink-0">
+            <Link to={`/app/chat?match=${m._id}`} className="flex items-center gap-2 md:gap-4 p-2 md:p-4 rounded-xl hover:bg-white/5 transition-all group cursor-pointer w-full overflow-hidden">
+              <div className="relative flex-shrink-0" onClick={(e) => { e.preventDefault(); navigate(`/app/profile/${m.otherUser?._id}`); }}>
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/30 to-secondary/30 flex items-center justify-center text-xl overflow-hidden">
                   {m.otherUser?.avatar ? (
                     (m.otherUser.avatar.startsWith('http') || m.otherUser.avatar.startsWith('data:')) ? (
@@ -184,7 +199,7 @@ export default function Matches() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="hidden md:flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 <span className="text-xs gradient-text font-semibold">{m.compatibility}%</span>
                 <MoreHorizontal className="w-4 h-4 text-dark-500" />
               </div>

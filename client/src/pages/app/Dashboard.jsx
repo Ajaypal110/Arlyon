@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { Heart, MessageCircle, Eye, TrendingUp, Sparkles, Users, Crown, Zap, Clock } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState({
@@ -58,10 +60,10 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-8 max-w-6xl">
+    <div className="space-y-8 max-w-6xl px-2 md:px-0">
       {/* Header */}
       <div>
-        <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-3xl font-display font-bold">
+        <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-2xl md:text-3xl font-display font-bold">
           Welcome back, <span className="gradient-text">{user?.name?.split(' ')[0] || 'there'}</span> 👋
         </motion.h1>
         <p className="text-dark-400 mt-1">Here's what's happening with your dating journey</p>
@@ -105,6 +107,7 @@ export default function Dashboard() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.3 + i * 0.1 }}
                   className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group"
+                  onClick={() => navigate(`/app/profile/${m.otherUserId}`)}
                 >
                   <div className="flex items-center gap-3">
                     {m.avatar ? (
@@ -173,7 +176,7 @@ export default function Dashboard() {
       {/* Profile Completion */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
         className="card bg-gradient-to-r from-primary/10 via-card to-secondary/10 border-primary/20 backdrop-blur-sm">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center">
               <Sparkles className="w-6 h-6 text-primary" />

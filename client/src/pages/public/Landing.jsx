@@ -1,6 +1,7 @@
-import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Heart, Sparkles, Shield, Zap, MessageCircle, Stars, ArrowRight, Check } from 'lucide-react';
+import { Heart, Sparkles, Shield, Zap, MessageCircle, Stars, ArrowRight, Check, Menu, X } from 'lucide-react';
 
 const features = [
   { icon: Sparkles, title: 'AI-Powered Matching', desc: 'Our algorithm learns your preferences to find your perfect match.' },
@@ -20,6 +21,8 @@ const plans = [
 const fadeInUp = { initial: { opacity: 0, y: 30 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.6 } };
 
 export default function Landing() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-dark-900 overflow-hidden">
       {/* Navbar */}
@@ -37,7 +40,27 @@ export default function Landing() {
             <Link to="/login" className="btn-ghost text-sm">Log in</Link>
             <Link to="/signup" className="btn-primary text-sm !py-2.5 !px-5">Get Started</Link>
           </div>
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 rounded-lg hover:bg-white/5 text-dark-400 hover:text-white transition-colors">
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
         </div>
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden border-t border-white/5 overflow-hidden"
+            >
+              <div className="px-6 py-4 space-y-3">
+                <a href="#features" onClick={() => setMobileMenuOpen(false)} className="block text-dark-300 hover:text-white text-sm font-medium py-2">Features</a>
+                <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="block text-dark-300 hover:text-white text-sm font-medium py-2">Pricing</a>
+                <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="block text-dark-300 hover:text-white text-sm font-medium py-2">Log in</Link>
+                <Link to="/signup" onClick={() => setMobileMenuOpen(false)} className="btn-primary text-sm text-center block !py-2.5">Get Started</Link>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
 
       {/* Hero */}
@@ -79,7 +102,7 @@ export default function Landing() {
 
           {/* Stats */}
           <motion.div {...fadeInUp} transition={{ delay: 0.5, duration: 0.6 }}
-            className="grid grid-cols-3 gap-8 max-w-lg mx-auto mt-16">
+            className="grid grid-cols-3 gap-4 md:gap-8 max-w-lg mx-auto mt-12 md:mt-16">
             {[['2M+', 'Active Users'], ['500K+', 'Matches Made'], ['4.9★', 'App Rating']].map(([stat, label]) => (
               <div key={label}>
                 <div className="text-2xl font-bold gradient-text">{stat}</div>
