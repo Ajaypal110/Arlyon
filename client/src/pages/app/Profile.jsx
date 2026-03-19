@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   ArrowLeft, Camera, Shield, Crown, MapPin, 
   Edit3, Save, Plus, Sparkles, Heart, Wine, 
-  Dumbbell, Salad, Dog 
+  Dumbbell, Salad, Dog, Loader2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';
@@ -21,11 +21,15 @@ const radarData = [
 export default function Profile() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
   const { user: currentUser, updateUser } = useAuth();
   const [profileUser, setProfileUser] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isUploadingGallery, setIsUploadingGallery] = useState(false);
 
   const isOwnProfile = !id || id === currentUser?._id;
   
@@ -112,6 +116,86 @@ export default function Profile() {
     setFormData(prev => ({ ...prev, lifestyle: { ...prev.lifestyle, [field]: value } }));
   };
 
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      return toast.error('Image must be less than 5MB');
+    }
+
+    try {
+      setIsUploadingAvatar(true);
+      const reader = new FileReader();
+      
+      const uploadPromise = new Promise((resolve, reject) => {
+        reader.onloadend = async () => {
+          try {
+            const { data } = await api.post('/users/avatar', { avatar: reader.result });
+            updateUser(data.user);
+            setProfileUser(data.user);
+            resolve();
+          } catch (err) {
+            reject(err);
+          }
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      await toast.promise(uploadPromise, {
+        loading: 'Uploading avatar...',
+        success: 'Avatar updated!',
+        error: (err) => err.response?.data?.message || 'Failed to upload avatar'
+      });
+    } catch (error) {
+      console.error('Avatar upload error:', error);
+    } finally {
+      setIsUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleGalleryUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      return toast.error('Image must be less than 5MB');
+    }
+
+    try {
+      setIsUploadingGallery(true);
+      const reader = new FileReader();
+      
+      const uploadPromise = new Promise((resolve, reject) => {
+        reader.onloadend = async () => {
+          try {
+            const { data } = await api.post('/users/photos', { photo: reader.result });
+            updateUser(data.user);
+            setProfileUser(data.user);
+            resolve();
+          } catch (err) {
+            reject(err);
+          }
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      await toast.promise(uploadPromise, {
+        loading: 'Adding photo to gallery...',
+        success: 'Photo added!',
+        error: (err) => err.response?.data?.message || 'Failed to add photo'
+      });
+    } catch (error) {
+      console.error('Gallery upload error:', error);
+    } finally {
+      setIsUploadingGallery(false);
+      if (galleryInputRef.current) galleryInputRef.current.value = '';
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="h-[60vh] flex items-center justify-center">
@@ -143,11 +227,29 @@ export default function Profile() {
                   '😊'
                 )}
               </div>
+              {isUploadingAvatar && (
+                <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center">
+                  <Loader2 className="w-8 h-8 text-white animate-spin" />
+                </div>
+              )}
             </div>
             {isOwnProfile && (
-              <button className="absolute bottom-1 right-1 w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                <Camera className="w-4 h-4" />
-              </button>
+              <>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingAvatar}
+                  className="absolute bottom-1 right-1 w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                >
+                  <Camera className="w-4 h-4" />
+                </button>
+              </>
             )}
           </div>
 
@@ -372,10 +474,29 @@ export default function Profile() {
               </div>
             ))}
             {isOwnProfile && (
-              <button className="aspect-square rounded-xl border-2 border-dashed border-dark-600 flex flex-col items-center justify-center text-dark-500 hover:border-primary/30 hover:text-primary-300 transition-all">
-                <Plus className="w-6 h-6" />
-                <span className="text-xs mt-1">Add</span>
-              </button>
+              <>
+                <input
+                  type="file"
+                  ref={galleryInputRef}
+                  onChange={handleGalleryUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <button 
+                  onClick={() => galleryInputRef.current?.click()}
+                  disabled={isUploadingGallery}
+                  className="aspect-square rounded-xl border-2 border-dashed border-dark-600 flex flex-col items-center justify-center text-dark-500 hover:border-primary/30 hover:text-primary-300 transition-all disabled:opacity-50"
+                >
+                  {isUploadingGallery ? (
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  ) : (
+                    <>
+                      <Plus className="w-6 h-6" />
+                      <span className="text-xs mt-1">Add</span>
+                    </>
+                  )}
+                </button>
+              </>
             )}
           </div>
         </motion.div>

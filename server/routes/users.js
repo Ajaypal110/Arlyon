@@ -107,6 +107,34 @@ router.post('/avatar', protect, async (req, res) => {
   }
 });
 
+// POST /api/users/photos
+router.post('/photos', protect, async (req, res) => {
+  try {
+    const { photo } = req.body; // base64 string
+    if (!photo) return res.status(400).json({ success: false, message: 'Photo is required' });
+
+    // Upload base64 to cloudinary
+    try {
+      const uploadRes = await uploadImage(photo); // Folder is already set to 'arlyon_avatars' in utility, but I'll use it for now or modify utility later
+      const user = await User.findById(req.user._id);
+      
+      user.photos.push({
+        url: uploadRes.secure_url,
+        publicId: uploadRes.public_id
+      });
+
+      user.calculateProfileCompletion();
+      await user.save();
+      
+      res.json({ success: true, user });
+    } catch (uploadError) {
+      return res.status(400).json({ success: false, message: uploadError.message });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // GET /api/users/discover
 router.get('/discover', protect, async (req, res) => {
   try {
