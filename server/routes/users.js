@@ -110,8 +110,15 @@ router.post('/avatar', protect, async (req, res) => {
 // GET /api/users/discover
 router.get('/discover', protect, async (req, res) => {
   try {
-    const { minAge, maxAge, gender, distance, page = 1, limit = 10 } = req.query;
+    let { minAge = 18, maxAge = 50, distance = 50, gender, page = 1, limit = 20 } = req.query;
     const userId = req.user._id;
+
+    // Enforcement: Free users get standard filters only
+    if (!req.user.isPremium) {
+      minAge = 18;
+      maxAge = 100; // Wide range
+      distance = 100000; // Large distance (approx 100km)
+    }
 
     // Get users already liked/passed
     const likedIds = (await Like.find({ from: userId })).map(l => l.to);
@@ -129,36 +136,46 @@ router.get('/discover', protect, async (req, res) => {
       filter.gender = req.user.genderPreference;
     }
 
-    if (minAge || maxAge) {
-      filter.age = {};
-      if (minAge) filter.age.$gte = parseInt(minAge);
-      if (maxAge) filter.age.$lte = parseInt(maxAge);
-    }
+    // Age filter logic
+    filter.age = { $gte: parseInt(minAge), $lte: parseInt(maxAge) };
 
-    // Distance filter
+    // Distance filter logic
     if (distance && distance !== 'Any' && distance !== '99999' && req.user.location?.coordinates?.length === 2) {
-      const maxDist = parseInt(distance) * 1000; // km to meters
+      const radiusInKm = parseInt(distance);
       filter.location = {
-        $near: {
-          $geometry: {
-            type: 'Point',
-            coordinates: req.user.location.coordinates
-          },
-          $maxDistance: maxDist
+        $geoWithin: {
+          $centerSphere: [req.user.location.coordinates, radiusInKm / 6378.1]
         }
       };
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const users = await User.find(filter)
-      .select('name age gender avatar photos bio interests location trustScore profileCompletion isPhotoVerified isPremium currentMood')
-      .sort({ boostActive: -1, trustScore: -1, createdAt: -1 })
+      .select('name age gender avatar photos bio interests location trustScore profileCompletion isPhotoVerified isPremium premiumTier currentMood')
+      .sort({ boostActive: -1, isPremium: -1, trustScore: -1, createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
     const total = await User.countDocuments(filter);
 
-    res.json({ success: true, users, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
+    // Limit detection for frontend
+    const user = await User.findById(userId);
+    const hasReachedLikeLimit = !user.isPremium && user.dailyLikes >= 10;
+    const superLimit = user.premiumTier === 'platinum' ? 10 : (user.premiumTier === 'gold' ? 5 : 1);
+    const hasReachedSuperLikeLimit = user.dailySuperLikes >= superLimit;
+    
+    let limitReached = null;
+    if (hasReachedLikeLimit) limitReached = 'daily swipes';
+    else if (hasReachedSuperLikeLimit) limitReached = 'superlikes';
+
+    res.json({ 
+      success: true, 
+      users, 
+      total, 
+      page: parseInt(page), 
+      pages: Math.ceil(total / parseInt(limit)),
+      limitReached 
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

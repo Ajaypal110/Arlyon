@@ -622,7 +622,7 @@ export default function Chat() {
                       {new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                     </span>
                     {isMe && (
-                      (msg.readBy?.length > 1) 
+                      (user.isPremium && msg.readBy?.length > 1) 
                         ? <CheckCheck className="w-3.5 h-3.5 text-[#34B7F1]" strokeWidth={2.5} /> 
                         : <Check className={`w-3.5 h-3.5 ${msg.isOptimistic ? 'text-white/30' : 'text-white/60'}`} strokeWidth={2.5} />
                     )}
@@ -685,7 +685,7 @@ export default function Chat() {
             </button>
           </div>
         )}
-        {showSuggestions && !editingMessage && (
+        {showSuggestions && !editingMessage && user.isPremium && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="px-3 md:px-6 py-3">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2 text-xs text-primary-300"><Sparkles className="w-3 h-3" /> AI Icebreakers</div>

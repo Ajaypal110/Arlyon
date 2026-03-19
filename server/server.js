@@ -8,6 +8,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { connectDB } from './config/db.js';
 import { setupSocket } from './socket/index.js';
+import { startKeepAlive } from './utils/keepAlive.js';
 
 // Route imports
 import authRoutes from './routes/auth.js';
@@ -87,6 +88,7 @@ connectDB().then(() => {
   setupSocket(io);
   httpServer.listen(PORT, () => {
     console.log(`🚀 ARLYON server running on port ${PORT}`);
+    startKeepAlive();
   });
 });
 

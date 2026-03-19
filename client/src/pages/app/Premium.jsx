@@ -1,27 +1,44 @@
 import { motion } from 'framer-motion';
-import { Crown, Check, Zap, Eye, Heart, Star, Shield, Sparkles, Loader2 } from 'lucide-react';
+import { Crown, Check, Zap, Eye, Heart, Star, Shield, Sparkles, Loader2, User as UserIcon } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
 const plans = [
+  {
+    name: 'Free',
+    price: '0',
+    displayPrice: '0',
+    type: 'free',
+    duration: 'forever',
+    color: 'from-dark-800 to-dark-700',
+    icon: UserIcon,
+    features: ['10 likes/day', '1 super like/day', 'Basic filters', 'Standard chat'],
+    buttonText: 'Get Started'
+  },
   { 
     name: 'Gold', 
-    price: '1', 
+    price: '9', 
+    displayPrice: '999',
     type: 'gold',
+    duration: 'month',
     color: 'from-amber-500 to-orange-500', 
     icon: Crown, 
     popular: true, 
-    features: ['Unlimited Likes', 'See Who Liked You', '5 Super Likes/day', 'Advanced Filters', 'Read Receipts', '3 Boosts/month', 'Priority Matching'] 
+    features: ['Unlimited likes', 'See who liked you', '5 super likes/day', 'Advanced filters', 'Read receipts', 'Profile boost'],
+    buttonText: 'Go Gold'
   },
   { 
     name: 'Platinum', 
-    price: '2', 
+    price: '19', 
+    displayPrice: '1,999',
     type: 'platinum',
+    duration: 'month',
     color: 'from-primary to-secondary', 
     icon: Star, 
-    features: ['Everything in Gold', '10 Super Likes/day', '5 Boosts/month', 'AI Date Assistant', 'Incognito Mode', 'Priority Support', 'Profile Highlights'] 
+    features: ['Everything in Gold', '10 super likes/day', 'Priority matching', '5 monthly boosts', 'AI date assistant', 'Incognito mode'],
+    buttonText: 'Go Platinum'
   },
 ];
 
@@ -41,6 +58,7 @@ export default function Premium() {
   const [loadingPlan, setLoadingPlan] = useState(null);
 
   const handleUpgrade = async (planType) => {
+    if (planType === 'free') return;
     try {
       setLoadingPlan(planType);
       const res = await loadRazorpay();
@@ -61,7 +79,7 @@ export default function Premium() {
         currency: orderData.order.currency,
         name: 'ARLYON Premium',
         description: `Upgrade to ${planType.toUpperCase()} Plan`,
-        image: 'https://cdn-icons-png.flaticon.com/512/752/752763.png', // Premium Crown Icon
+        image: 'https://cdn-icons-png.flaticon.com/512/752/752763.png',
         order_id: orderData.order.id,
         handler: async function (response) {
           try {
@@ -72,7 +90,6 @@ export default function Premium() {
             });
             
             toast.success(`You are now a ${planType.toUpperCase()} member! 🎉`, { duration: 5000 });
-            // Refresh user data to update isPremium flag
             if (updateUser) await updateUser();
           } catch (err) {
             toast.error('Payment verification failed');
@@ -83,7 +100,7 @@ export default function Premium() {
           email: user?.email,
         },
         theme: {
-          color: '#EC4899' // Secondary brand color
+          color: '#EC4899'
         }
       };
 
@@ -104,33 +121,57 @@ export default function Premium() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-12 py-8 px-4">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/20 mb-4">
-          <Crown className="w-4 h-4 text-amber-400" /><span className="text-sm text-amber-400 font-medium">Upgrade to Premium</span>
-        </div>
-        <h1 className="text-3xl font-display font-bold mb-2">Unlock Your Full <span className="gradient-text">Potential</span></h1>
-        <p className="text-dark-400 max-w-lg mx-auto">Get more matches, more features, and find your person faster.</p>
+        <h1 className="text-4xl md:text-5xl font-display font-bold mb-4">Choose Your <span className="gradient-text">Plan</span></h1>
+        <p className="text-dark-400 max-w-lg mx-auto text-lg italic">"Premium features for a premium experience."</p>
       </motion.div>
 
-      <div className="grid md:grid-cols-2 gap-8 max-w-2xl mx-auto">
+      <div className="grid lg:grid-cols-3 gap-6 md:gap-8">
         {plans.map((p, i) => (
-          <motion.div key={p.name} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-            className={`card-hover relative ${p.popular ? 'border-amber-500/30 bg-amber-500/5' : ''}`}>
-            {p.popular && <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full text-xs font-bold text-white">POPULAR</div>}
-            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${p.color} flex items-center justify-center mb-4`}><p.icon className="w-6 h-6 text-white" /></div>
-            <h3 className="text-lg font-semibold">{p.name}</h3>
-            <div className="flex items-baseline gap-1 my-3"><span className="text-3xl font-display font-bold">₹{p.price}</span><span className="text-dark-500 text-sm">/mo</span></div>
-            <ul className="space-y-2.5 mb-6">
-              {p.features.map(f => (<li key={f} className="flex items-center gap-2 text-sm text-dark-300"><Check className="w-4 h-4 text-green-400 flex-shrink-0" />{f}</li>))}
+          <motion.div 
+            key={p.name} 
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ delay: i * 0.1 }}
+            className={`flex flex-col rounded-3xl p-6 md:p-8 bg-dark-800/40 backdrop-blur-md border transition-all duration-300 relative group
+              ${p.popular ? 'border-primary/50 shadow-2xl shadow-primary/10 scale-105 z-10' : 'border-white/5 hover:border-white/10'}`}
+          >
+            {p.popular && (
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-pink-500 to-primary px-6 py-1.5 rounded-full text-xs font-bold text-white uppercase tracking-widest shadow-lg">
+                Most Popular
+              </div>
+            )}
+
+            <div className="mb-8">
+              <h3 className="text-2xl font-bold mb-4">{p.name}</h3>
+              <div className="flex items-baseline gap-1">
+                <span className="text-4xl md:text-5xl font-bold">₹{p.displayPrice}</span>
+                <span className="text-dark-500 font-medium">/{p.duration}</span>
+              </div>
+            </div>
+
+            <ul className="space-y-4 mb-10 flex-1">
+              {p.features.map(f => (
+                <li key={f} className="flex items-center gap-3 text-sm md:text-base text-dark-200">
+                  <Check className="w-5 h-5 text-green-500 shrink-0" />
+                  {f}
+                </li>
+              ))}
             </ul>
+
             <button 
               onClick={() => handleUpgrade(p.type)}
-              disabled={loadingPlan === p.type || (user?.isPremium && user?.premiumTier === p.type)}
-              className={`w-full py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${p.popular ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg hover:shadow-amber-500/25' : 'btn-secondary'}`}
+              disabled={loadingPlan === p.type || p.type === 'free' || (user?.isPremium && user?.premiumTier === p.type)}
+              className={`w-full py-4 rounded-2xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-2 transform active:scale-[0.98]
+                ${p.type === 'free' ? 'btn-secondary opacity-50 cursor-default' : 
+                  p.name === 'Gold' ? 'bg-gradient-to-r from-[#8b5cf6] via-[#d946ef] to-[#ec4899] text-white hover:brightness-110 shadow-xl shadow-pink-500/20' : 
+                  'btn-secondary border-white/10 hover:bg-white/5 text-white'}`}
             >
-              {loadingPlan === p.type ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              {user?.isPremium && user?.premiumTier === p.type ? 'Current Plan' : (user?.premiumTier === 'gold' && p.type === 'platinum' ? 'Upgrade to Platinum' : `Choose ${p.name}`)}
+              {loadingPlan === p.type ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+              {p.type === 'free' ? 'Standard Access' : 
+               user?.isPremium && user?.premiumTier === p.type ? 'Active Plan' : 
+               p.buttonText}
             </button>
           </motion.div>
         ))}

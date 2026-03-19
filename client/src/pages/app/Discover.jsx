@@ -117,6 +117,11 @@ export default function Discover() {
       });
       const { data } = await api.get(`/users/discover?${params.toString()}`);
       setUsers(data.users || []);
+      if (data.limitReached) {
+        setLimitReached(data.limitReached);
+      } else {
+        setLimitReached(null);
+      }
     } catch (error) {
       console.error('Discover load error:', error);
       toast.error('Failed to load profiles. Please try again.');
@@ -126,6 +131,10 @@ export default function Discover() {
   };
 
   const handleSwipe = async (direction) => {
+    if (limitReached) {
+      navigate('/app/premium');
+      return;
+    }
     if (users.length === 0) return;
     const current = users[0];
     
@@ -154,6 +163,10 @@ export default function Discover() {
   };
 
   const handleSuperLike = async () => {
+    if (limitReached) {
+      navigate('/app/premium');
+      return;
+    }
     if (users.length === 0) return;
     const current = users[0];
     setUsers(prev => prev.slice(1));
@@ -181,7 +194,7 @@ export default function Discover() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-display font-bold">Discover</h1>
-          <p className="text-sm text-dark-400">{users.length} people nearby</p>
+          <p className="text-sm text-dark-400">{limitReached ? 'Limit Reached' : `${users.length} people nearby`}</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={fetchUsers} disabled={loading}
@@ -246,6 +259,31 @@ export default function Discover() {
             <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
             <h3 className="text-lg font-display font-semibold mb-2 text-dark-300">Finding people nearby...</h3>
           </motion.div>
+        ) : limitReached ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="card h-full flex flex-col items-center justify-center text-center p-8 bg-amber-500/5 border-amber-500/20">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center mx-auto mb-6">
+              <AlertCircle className="w-8 h-8 text-amber-500" />
+            </div>
+            <h3 className="text-xl font-display font-bold mb-2">Daily Limit Reached!</h3>
+            <p className="text-dark-400 text-sm mb-8 max-w-[240px] mx-auto">
+              You've used all your {limitReached} for today.
+            </p>
+            <div className="space-y-3 w-full">
+              <button 
+                onClick={() => navigate('/app/premium')}
+                className="w-full py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold hover:shadow-lg hover:shadow-amber-500/20 active:scale-95 transition-all"
+              >
+                Upgrade to Premium
+              </button>
+              <button 
+                onClick={() => navigate('/app')}
+                className="w-full py-3 rounded-xl border border-dark-600 text-dark-400 font-medium hover:bg-dark-800 transition-all"
+              >
+                Maybe Later
+              </button>
+              <p className="text-xs text-dark-500">Refreshes tomorrow or upgrade now for unlimited swipes</p>
+            </div>
+          </motion.div>
         ) : users.length === 0 ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="card h-full flex flex-col items-center justify-center text-center p-8">
             <Sparkles className="w-16 h-16 text-dark-600 mb-4" />
@@ -265,50 +303,30 @@ export default function Discover() {
       </div>
 
       {/* Action Buttons */}
-      {users.length > 0 && (
-        <div className="flex items-center justify-center gap-5">
-          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => handleSwipe('pass')}
-            className="w-14 h-14 rounded-full bg-dark-800 border border-dark-600 flex items-center justify-center text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all">
-            <X className="w-6 h-6" />
-          </motion.button>
-          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={handleSuperLike}
-            className="w-12 h-12 rounded-full bg-dark-800 border border-dark-600 flex items-center justify-center text-blue-400 hover:bg-blue-500/10 hover:border-blue-500/30 transition-all">
-            <Star className="w-5 h-5" />
-          </motion.button>
-          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => handleSwipe('like')}
-            className="w-14 h-14 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all">
-            <Heart className="w-6 h-6" />
-          </motion.button>
-        </div>
-      )}
-      {/* Limit Reached Modal */}
-      <AnimatePresence>
-        {limitReached && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center px-6 bg-dark-950/80 backdrop-blur-md">
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-              className="w-full max-w-sm bg-dark-900 border border-white/10 rounded-3xl p-8 text-center shadow-2xl">
-              <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center mx-auto mb-6">
-                <AlertCircle className="w-8 h-8 text-amber-500" />
-              </div>
-              <h2 className="text-2xl font-display font-bold mb-2">Limit Reached!</h2>
-              <p className="text-dark-400 mb-8">
-                You've used all your {limitReached} for today. Upgrade to Gold or Platinum for unlimited connections!
-              </p>
-              <div className="space-y-3">
-                <button onClick={() => navigate('/app/premium')}
-                  className="w-full py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold hover:shadow-lg hover:shadow-amber-500/20 active:scale-95 transition-all">
-                  Upgrade to Premium
-                </button>
-                <button onClick={() => setLimitReached(null)}
-                  className="w-full py-4 rounded-xl btn-ghost !bg-transparent text-dark-500">
-                  Maybe Later
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div className="flex items-center justify-center gap-5">
+        <motion.button 
+          whileHover={{ scale: 1.1 }} 
+          whileTap={{ scale: 0.9 }} 
+          onClick={() => limitReached ? navigate('/app/premium') : handleSwipe('pass')}
+          className="w-14 h-14 rounded-full bg-dark-800 border border-dark-600 flex items-center justify-center text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all">
+          <X className="w-6 h-6" />
+        </motion.button>
+        <motion.button 
+          whileHover={{ scale: 1.1 }} 
+          whileTap={{ scale: 0.9 }} 
+          onClick={() => limitReached ? navigate('/app/premium') : handleSuperLike()}
+          className="w-12 h-12 rounded-full bg-dark-800 border border-dark-600 flex items-center justify-center text-blue-400 hover:bg-blue-500/10 hover:border-blue-500/30 transition-all">
+          <Star className="w-5 h-5" />
+        </motion.button>
+        <motion.button 
+          whileHover={{ scale: 1.1 }} 
+          whileTap={{ scale: 0.9 }} 
+          onClick={() => limitReached ? navigate('/app/premium') : handleSwipe('like')}
+          className="w-14 h-14 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all">
+          <Heart className="w-6 h-6" />
+        </motion.button>
+      </div>
+      {/* Action Buttons Removed when limit reached */}
     </div>
   );
 }

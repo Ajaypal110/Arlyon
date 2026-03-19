@@ -10,14 +10,16 @@ const router = express.Router();
 const PLANS = {
   gold: { 
     id: 'gold_monthly',
-    price: 1, 
+    price: 9, 
+    displayPrice: 999,
     type: 'gold', 
     name: 'Gold',
     features: ['Unlimited likes', 'See who liked you', '5 super likes/day', 'Advanced filters', 'Read receipts', 'Profile boost']
   },
   platinum: { 
     id: 'platinum_monthly',
-    price: 2, 
+    price: 19, 
+    displayPrice: 1999,
     type: 'platinum',
     name: 'Platinum',
     features: ['Everything in Gold', '10 super likes/day', 'Priority matching', '5 monthly boosts', 'AI date assistant', 'Incognito mode']
