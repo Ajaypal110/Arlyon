@@ -32,15 +32,31 @@ router.get('/:matchId', protect, async (req, res) => {
 // POST /api/messages/:matchId
 router.post('/:matchId', protect, async (req, res) => {
   try {
-    const { content, type = 'text', imageUrl, videoUrl, voiceUrl, voiceDuration } = req.body;
+    const { 
+      content, type = 'text', 
+      imageUrl, videoUrl, voiceUrl, voiceDuration,
+      fileUrl, fileName, fileSize,
+      contactData
+    } = req.body;
+    
     const match = await Match.findById(req.params.matchId);
     if (!match || !match.users.includes(req.user._id)) {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
     const message = await Message.create({
-      match: req.params.matchId, sender: req.user._id,
-      content, type, imageUrl, videoUrl, voiceUrl, voiceDuration,
+      match: req.params.matchId, 
+      sender: req.user._id,
+      content, 
+      type, 
+      imageUrl, 
+      videoUrl, 
+      voiceUrl, 
+      voiceDuration,
+      fileUrl,
+      fileName,
+      fileSize,
+      contactData,
       readBy: [req.user._id],
     });
 

@@ -120,6 +120,9 @@ export default function Premium() {
     }
   };
 
+  const tierWeights = { none: 0, free: 0, gold: 1, platinum: 2 };
+  const currentTierWeight = tierWeights[user?.premiumTier] || 0;
+
   return (
     <div className="max-w-6xl mx-auto space-y-12 py-8 px-4">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
@@ -128,53 +131,61 @@ export default function Premium() {
       </motion.div>
 
       <div className="grid lg:grid-cols-3 gap-6 md:gap-8">
-        {plans.map((p, i) => (
-          <motion.div 
-            key={p.name} 
-            initial={{ opacity: 0, y: 20 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            transition={{ delay: i * 0.1 }}
-            className={`flex flex-col rounded-3xl p-6 md:p-8 bg-dark-800/40 backdrop-blur-md border transition-all duration-300 relative group
-              ${p.popular ? 'border-primary/50 shadow-2xl shadow-primary/10 scale-105 z-10' : 'border-white/5 hover:border-white/10'}`}
-          >
-            {p.popular && (
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-pink-500 to-primary px-6 py-1.5 rounded-full text-xs font-bold text-white uppercase tracking-widest shadow-lg">
-                Most Popular
-              </div>
-            )}
+        {plans.map((p, i) => {
+          const planTierWeight = tierWeights[p.type] || 0;
+          const isCurrentPlan = user?.isPremium && user?.premiumTier === p.type;
+          const isIncluded = user?.isPremium && currentTierWeight > planTierWeight;
 
-            <div className="mb-8">
-              <h3 className="text-2xl font-bold mb-4">{p.name}</h3>
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl md:text-5xl font-bold">₹{p.displayPrice}</span>
-                <span className="text-dark-500 font-medium">/{p.duration}</span>
-              </div>
-            </div>
-
-            <ul className="space-y-4 mb-10 flex-1">
-              {p.features.map(f => (
-                <li key={f} className="flex items-center gap-3 text-sm md:text-base text-dark-200">
-                  <Check className="w-5 h-5 text-green-500 shrink-0" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-
-            <button 
-              onClick={() => handleUpgrade(p.type)}
-              disabled={loadingPlan === p.type || p.type === 'free' || (user?.isPremium && user?.premiumTier === p.type)}
-              className={`w-full py-4 rounded-2xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-2 transform active:scale-[0.98]
-                ${p.type === 'free' ? 'btn-secondary opacity-50 cursor-default' : 
-                  p.name === 'Gold' ? 'bg-gradient-to-r from-[#8b5cf6] via-[#d946ef] to-[#ec4899] text-white hover:brightness-110 shadow-xl shadow-pink-500/20' : 
-                  'btn-secondary border-white/10 hover:bg-white/5 text-white'}`}
+          return (
+            <motion.div 
+              key={p.name} 
+              initial={{ opacity: 0, y: 20 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              transition={{ delay: i * 0.1 }}
+              className={`flex flex-col rounded-3xl p-6 md:p-8 bg-dark-800/40 backdrop-blur-md border transition-all duration-300 relative group
+                ${p.popular ? 'border-primary/50 shadow-2xl shadow-primary/10 scale-105 z-10' : 'border-white/5 hover:border-white/10'}`}
             >
-              {loadingPlan === p.type ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
-              {p.type === 'free' ? 'Standard Access' : 
-               user?.isPremium && user?.premiumTier === p.type ? 'Active Plan' : 
-               p.buttonText}
-            </button>
-          </motion.div>
-        ))}
+              {p.popular && (
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-pink-500 to-primary px-6 py-1.5 rounded-full text-xs font-bold text-white uppercase tracking-widest shadow-lg">
+                  Most Popular
+                </div>
+              )}
+
+              <div className="mb-8">
+                <h3 className="text-2xl font-bold mb-4">{p.name}</h3>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl md:text-5xl font-bold">₹{p.displayPrice}</span>
+                  <span className="text-dark-500 font-medium">/{p.duration}</span>
+                </div>
+              </div>
+
+              <ul className="space-y-4 mb-10 flex-1">
+                {p.features.map(f => (
+                  <li key={f} className="flex items-center gap-3 text-sm md:text-base text-dark-200">
+                    <Check className="w-5 h-5 text-green-500 shrink-0" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+
+              <button 
+                onClick={() => handleUpgrade(p.type)}
+                disabled={loadingPlan === p.type || p.type === 'free' || isCurrentPlan || isIncluded}
+                className={`w-full py-4 rounded-2xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-2 transform active:scale-[0.98]
+                  ${p.type === 'free' ? 'btn-secondary opacity-50 cursor-default' : 
+                    p.name === 'Gold' ? 'bg-gradient-to-r from-[#8b5cf6] via-[#d946ef] to-[#ec4899] text-white hover:brightness-110 shadow-xl shadow-pink-500/20' : 
+                    isCurrentPlan || isIncluded ? 'bg-dark-700/50 text-dark-400 cursor-default' : 
+                    'btn-secondary border-white/10 hover:bg-white/5 text-white'}`}
+              >
+                {loadingPlan === p.type ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+                {p.type === 'free' ? 'Standard Access' : 
+                 isCurrentPlan ? 'Active Plan' : 
+                 isIncluded ? 'Included in Plan' :
+                 p.buttonText}
+              </button>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );

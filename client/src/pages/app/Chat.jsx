@@ -40,15 +40,41 @@ export default function Chat() {
   const [previewImage, setPreviewImage] = useState(null);
   const [isSending, setIsSending] = useState(false);
   const [showPlusMenu, setShowPlusMenu] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [showContactPicker, setShowContactPicker] = useState(false);
   const plusMenuRef = useRef(null);
   const plusButtonRef = useRef(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
 
   // Auto-scroll to bottom of chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Camera Stream Management
+  useEffect(() => {
+    let stream = null;
+    if (isCameraOpen && videoRef.current) {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+        .then(s => {
+          stream = s;
+          if (videoRef.current) videoRef.current.srcObject = s;
+        })
+        .catch(err => {
+          console.error("Camera access error:", err);
+          toast.error("Could not access camera. Please check permissions.");
+          setIsCameraOpen(false);
+        });
+    }
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [isCameraOpen]);
 
   // Close plus menu when clicking outside
   useEffect(() => {
@@ -256,6 +282,11 @@ export default function Chat() {
       type: mediaData ? mediaData.type : 'text',
       imageUrl: mediaData?.type === 'image' ? mediaData.url : null,
       videoUrl: mediaData?.type === 'video' ? mediaData.url : null,
+      voiceUrl: mediaData?.type === 'voice' ? mediaData.url : null,
+      fileUrl: mediaData?.type === 'file' ? mediaData.url : null,
+      fileName: mediaData?.fileName,
+      fileSize: mediaData?.fileSize,
+      contactData: mediaData?.contactData,
       createdAt: new Date().toISOString(), 
       isOptimistic: true,
       readBy: [user._id] 
@@ -274,8 +305,17 @@ export default function Chat() {
         type: mediaData ? mediaData.type : 'text'
       };
 
-      if (mediaData?.type === 'image') payload.imageUrl = mediaData.url;
-      if (mediaData?.type === 'video') payload.videoUrl = mediaData.url;
+      if (mediaData) {
+        if (mediaData.type === 'image') payload.imageUrl = mediaData.url;
+        if (mediaData.type === 'video') payload.videoUrl = mediaData.url;
+        if (mediaData.type === 'voice') payload.voiceUrl = mediaData.url;
+        if (mediaData.type === 'file') {
+          payload.fileUrl = mediaData.url;
+          payload.fileName = mediaData.fileName;
+          payload.fileSize = mediaData.fileSize;
+        }
+        if (mediaData.type === 'contact') payload.contactData = mediaData.contactData;
+      }
 
       const { data } = await api.post(`/messages/${selectedChat._id}`, payload);
       setMessages(prev => prev.map(m => m._id === tempId ? { ...data.message, _id: data.message._id, wasOptimistic: true } : m));
@@ -302,11 +342,17 @@ export default function Chat() {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onloadend = () => {
-        const type = file.type.startsWith('video') ? 'video' : 'image';
+        let type = 'file';
+        if (file.type.startsWith('image/')) type = 'image';
+        else if (file.type.startsWith('video/')) type = 'video';
+        else if (file.type.startsWith('audio/')) type = 'voice';
+
         setPendingMedia({ 
           file: file,
           preview: reader.result,
-          type: type
+          type: type,
+          name: file.name,
+          size: file.size
         });
       };
     } catch (error) {
@@ -320,8 +366,15 @@ export default function Chat() {
     try {
       setIsUploading(true);
       const { data } = await api.post('/messages/upload/media', { file: pendingMedia.preview });
-      const type = data.resource_type === 'video' ? 'video' : 'image';
-      await sendMessage({ url: data.url, type });
+      
+      const mediaPayload = { 
+        url: data.url, 
+        type: pendingMedia.type,
+        fileName: pendingMedia.name,
+        fileSize: pendingMedia.size
+      };
+
+      await sendMessage(mediaPayload);
       setPendingMedia(null);
     } catch (error) {
       toast.error("Upload failed");
@@ -589,7 +642,7 @@ export default function Chat() {
                 )}
                 
                 <div className={`
-                  ${msg.content 
+                  ${(msg.content || msg.type === 'file' || msg.type === 'contact' || msg.type === 'voice') 
                   ? 'max-w-[75%] md:max-w-[70%] px-3 md:px-4 py-2.5 md:py-3' 
                   : 'max-w-[65%] md:max-w-[60%] p-1.5'} 
                   rounded-2xl text-[14.5px] leading-relaxed break-words whitespace-pre-wrap 
@@ -614,9 +667,45 @@ export default function Chat() {
                       className={`rounded-lg ${msg.content ? 'mb-2' : ''} max-h-48 w-full bg-black`} 
                     />
                   )}
+                  {msg.voiceUrl && (
+                    <div className="flex items-center gap-3 py-1">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isMe ? 'bg-white/20' : 'bg-primary/20 text-primary'}`}>
+                        <Music className="w-4 h-4" />
+                      </div>
+                      <audio src={msg.voiceUrl} controls className="h-8 w-40 md:w-48 brightness-90 contrast-125" />
+                    </div>
+                  )}
+                  {msg.fileUrl && (
+                    <div className="flex items-center gap-3 p-2 bg-black/20 rounded-xl border border-white/5">
+                      <div className="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center text-indigo-400">
+                        <FileText className="w-6 h-6" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{msg.fileName || 'Document'}</p>
+                        <p className="text-[10px] text-dark-400">{(msg.fileSize / 1024).toFixed(1)} KB • File</p>
+                      </div>
+                      <button 
+                        onClick={() => downloadMedia(msg.fileUrl, msg.fileName)}
+                        className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                      >
+                        <X className="w-4 h-4 rotate-45" /> {/* Use rotate-45 for Download look-alike or find icon */}
+                      </button>
+                    </div>
+                  )}
+                  {msg.type === 'contact' && msg.contactData && (
+                    <div className="flex items-center gap-3 p-2 bg-black/20 rounded-xl border border-white/5">
+                      <div className="w-10 h-10 rounded-full overflow-hidden bg-primary/20 flex items-center justify-center">
+                        {msg.contactData.avatar ? <img src={msg.contactData.avatar} alt="Contact" className="w-full h-full object-cover" /> : <UserIcon className="w-5 h-5 text-primary" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{msg.contactData.name}</p>
+                        <p className="text-[10px] text-dark-400">Shared Contact</p>
+                      </div>
+                    </div>
+                  )}
                   {msg.content && <p className="break-words whitespace-pre-wrap">{msg.content}</p>}
-                  {!msg.content && !msg.imageUrl && !msg.videoUrl && msg.text && <p className="break-words whitespace-pre-wrap">{msg.text}</p>}
-                  <div className={`flex items-center gap-2 mt-1 ${isMe ? 'justify-end' : ''} ${!msg.content ? 'px-2 pb-1' : ''}`}>
+                  {!msg.content && !msg.imageUrl && !msg.videoUrl && !msg.voiceUrl && !msg.fileUrl && !msg.contactData && msg.text && <p className="break-words whitespace-pre-wrap">{msg.text}</p>}
+                  <div className={`flex items-center gap-2 mt-1 ${isMe ? 'justify-end' : ''} ${(!msg.content && !msg.fileUrl && !msg.contactData) ? 'px-2 pb-1' : ''}`}>
                     {msg.isEdited && <span className="text-[9px] text-white/40 italic">edited</span>}
                     <span className={`text-[10px] ${isMe ? 'text-white/60' : 'text-dark-500'}`}>
                       {new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
@@ -720,35 +809,40 @@ export default function Chat() {
                 className="absolute bottom-[calc(100%+12px)] left-2 md:left-4 w-72 bg-[#1c1c1e] border border-white/10 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-[100] max-h-[300px] overflow-y-auto py-2"
               >
                 <div className="grid grid-cols-1">
-                  {[
-                    { icon: FileText, label: 'Document', color: 'bg-indigo-500/20 text-indigo-400' },
-                    { icon: Image, label: 'Photos & videos', color: 'bg-blue-500/20 text-blue-400' },
-                    { icon: Camera, label: 'Camera', color: 'bg-pink-500/20 text-pink-500' },
-                    { icon: Music, label: 'Audio', color: 'bg-orange-500/20 text-orange-400' },
-                    { icon: Contact, label: 'Contact', color: 'bg-sky-500/20 text-sky-400' },
-                    { icon: BarChart2, label: 'Poll', color: 'bg-yellow-500/20 text-yellow-400' },
-                    { icon: Calendar, label: 'Event', color: 'bg-rose-500/20 text-rose-400' },
-                    { icon: Sticker, label: 'New sticker', color: 'bg-emerald-500/20 text-emerald-400' },
-                  ].map((item, idx) => (
-                    <button 
-                      key={idx} 
-                      className="flex items-center gap-4 px-5 py-2.5 hover:bg-white/5 transition-colors text-left"
-                      onClick={() => {
-                        if (item.label === 'Photos & videos') {
-                          fileInputRef.current.setAttribute('accept', 'image/*,video/*');
-                          fileInputRef.current.click();
-                        } else {
-                          toast(`Selected: ${item.label}`, { icon: '✨' });
-                        }
-                        setShowPlusMenu(false);
-                      }}
-                    >
-                      <div className={`p-2 rounded-lg ${item.color}`}>
-                        <item.icon className="w-5 h-5" />
-                      </div>
-                      <span className="text-sm font-medium text-dark-100">{item.label}</span>
-                    </button>
-                  ))}
+                    {[
+                      { icon: FileText, label: 'Document', color: 'bg-indigo-500/20 text-indigo-400' },
+                      { icon: Image, label: 'Photos & videos', color: 'bg-blue-500/20 text-blue-400' },
+                      { icon: Camera, label: 'Camera', color: 'bg-pink-500/20 text-pink-500' },
+                      { icon: Music, label: 'Audio', color: 'bg-orange-500/20 text-orange-400' },
+                      { icon: Contact, label: 'Contact', color: 'bg-sky-500/20 text-sky-400' },
+                    ].map((item, idx) => (
+                      <button 
+                        key={idx} 
+                        className="flex items-center gap-4 px-5 py-2.5 hover:bg-white/5 transition-colors text-left w-full"
+                        onClick={() => {
+                          setShowPlusMenu(false);
+                          if (item.label === 'Photos & videos') {
+                            fileInputRef.current.setAttribute('accept', 'image/*,video/*');
+                            fileInputRef.current.click();
+                          } else if (item.label === 'Document') {
+                            fileInputRef.current.setAttribute('accept', '*/*');
+                            fileInputRef.current.click();
+                          } else if (item.label === 'Camera') {
+                            setIsCameraOpen(true);
+                          } else if (item.label === 'Audio') {
+                            fileInputRef.current.setAttribute('accept', 'audio/*');
+                            fileInputRef.current.click();
+                          } else if (item.label === 'Contact') {
+                            setShowContactPicker(true);
+                          }
+                        }}
+                      >
+                        <div className={`p-2 rounded-lg ${item.color}`}>
+                          <item.icon className="w-5 h-5" />
+                        </div>
+                        <span className="text-sm font-medium text-dark-100">{item.label}</span>
+                      </button>
+                    ))}
                 </div>
               </motion.div>
             )}
@@ -857,6 +951,133 @@ export default function Chat() {
           </div>
         )}
       </div>
+
+      <AnimatePresence>
+        {isCameraOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-4"
+          >
+            <div className="relative w-full max-w-2xl aspect-[4/3] md:aspect-video bg-dark-900 rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
+              <video 
+                ref={videoRef} 
+                autoPlay 
+                playsInline 
+                muted
+                className="w-full h-full object-cover scale-x-[-1]" 
+              />
+              <div className="absolute top-6 left-6">
+                <button onClick={() => setIsCameraOpen(false)} className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition-all">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="absolute bottom-8 left-0 right-0 flex justify-center items-center">
+                <button 
+                  onClick={() => {
+                    const video = videoRef.current;
+                    const canvas = canvasRef.current;
+                    if (!video || !canvas) return;
+                    
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    // Mirror for the shot as well
+                    ctx.translate(canvas.width, 0);
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(video, 0, 0);
+                    
+                    const photo = canvas.toDataURL('image/jpeg', 0.8);
+                    setPendingMedia({ 
+                      preview: photo, 
+                      type: 'image', 
+                      name: `capture-${Date.now()}.jpg`, 
+                      size: photo.length 
+                    });
+                    setIsCameraOpen(false);
+                  }}
+                  className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center p-1.5 active:scale-90 transition-all hover:scale-105 shadow-2xl"
+                >
+                  <div className="w-full h-full rounded-full bg-white shadow-inner" />
+                </button>
+              </div>
+            </div>
+            <canvas ref={canvasRef} className="hidden" />
+            <p className="mt-6 text-dark-400 text-sm font-medium">Capture a quick photo to share</p>
+          </motion.div>
+        )}
+
+        {showContactPicker && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md flex items-center justify-center p-4"
+          >
+            <div className="w-full max-w-md bg-dark-900 rounded-3xl border border-white/10 overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
+              <div className="p-5 border-b border-white/5 flex justify-between items-center bg-dark-800/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+                    <Users className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-lg">Share Contact</h4>
+                    <p className="text-[10px] text-dark-500 uppercase tracking-widest font-semibold font-sans">Select user to share</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowContactPicker(false)} className="w-10 h-10 flex items-center justify-center hover:bg-white/5 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-dark-400" />
+                </button>
+              </div>
+              <div className="p-3 overflow-y-auto space-y-1">
+                {conversations.filter(c => c.otherUser?._id !== selectedChat.otherUser?._id).map(c => (
+                  <button 
+                    key={c._id} 
+                    onClick={() => {
+                      sendMessage({ 
+                        type: 'contact', 
+                        contactData: { 
+                          user: c.otherUser._id,
+                          name: c.otherUser.name,
+                          avatar: c.otherUser.avatar
+                        } 
+                      });
+                      setShowContactPicker(false);
+                    }}
+                    className="flex items-center gap-4 w-full p-3.5 hover:bg-white/5 rounded-2xl transition-all group relative overflow-hidden active:scale-[0.98]"
+                  >
+                    <div className="relative">
+                      <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-primary/20 to-secondary/20 border-2 border-white/5 shadow-lg group-hover:border-primary/30 transition-all">
+                        <img src={c.otherUser.avatar} alt="" className="w-full h-full object-cover" />
+                      </div>
+                      {c.otherUser.isOnline && <div className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-dark-900 shadow-sm" />}
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="font-semibold text-sm group-hover:text-primary transition-colors flex items-center gap-1.5">
+                        {c.otherUser.name}
+                        {c.otherUser.isPremium && <Crown className="w-3.5 h-3.5 text-amber-500" />}
+                      </p>
+                      <p className="text-[11px] text-dark-400 group-hover:text-dark-300 transition-colors">Click to share profile</p>
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all group-hover:bg-primary/20">
+                      <Plus className="w-4 h-4 text-primary" />
+                    </div>
+                  </button>
+                ))}
+                {conversations.filter(c => c.otherUser?._id !== selectedChat.otherUser?._id).length === 0 && (
+                  <div className="py-12 text-center">
+                    <div className="w-16 h-16 rounded-full bg-dark-800 flex items-center justify-center mx-auto mb-4 border border-white/5">
+                      <Users className="w-8 h-8 text-dark-600" />
+                    </div>
+                    <p className="text-dark-400 text-sm">No other matches to share</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

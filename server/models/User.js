@@ -88,14 +88,43 @@ const userSchema = new mongoose.Schema({
   emailVerificationToken: String,
   emailVerificationExpiry: Date,
   
+  // Settings
+  settings: {
+    privacy: {
+      profileVisibility: { type: Boolean, default: true },
+      readReceipts: { type: Boolean, default: true },
+      onlineStatus: { type: Boolean, default: true },
+    },
+    notifications: {
+      matches: { type: Boolean, default: true },
+      messages: { type: Boolean, default: true },
+      likes: { type: Boolean, default: true },
+    }
+  }
+  
 }, { timestamps: true });
 
 userSchema.index({ location: '2dsphere' });
 userSchema.index({ gender: 1, age: 1 });
 
 userSchema.pre('save', async function(next) {
-  if (!this.isModified('password') || !this.password) return next();
-  this.password = await bcrypt.hash(this.password, 12);
+  // Hash password if modified
+  if (this.isModified('password') && this.password) {
+    this.password = await bcrypt.hash(this.password, 12);
+  }
+  
+  // Recalculate profile completion and trust score if relevant fields change
+  const relevantFields = [
+    'name', 'bio', 'avatar', 'photos', 'interests', 'location', 
+    'isEmailVerified', 'isPhotoVerified', 'isPremium', 'gender', 'lookingFor'
+  ];
+  
+  const isRelevantModified = relevantFields.some(field => this.isModified(field));
+  
+  if (isRelevantModified || this.isNew) {
+    this.calculateProfileCompletion();
+  }
+  
   next();
 });
 
@@ -112,7 +141,25 @@ userSchema.methods.calculateProfileCompletion = function() {
   if (this.interests?.length > 0) score += 10;
   if (this.location?.city) score += 10;
   this.profileCompletion = Math.min(score, 100);
+  
+  // Also recalculate trust score whenever completion changes
+  this.calculateTrustScore();
+  
   return this.profileCompletion;
+};
+
+userSchema.methods.calculateTrustScore = function() {
+  let score = 10; // Base score
+  
+  if (this.isEmailVerified) score += 20;
+  if (this.isPhotoVerified) score += 30;
+  if (this.profileCompletion >= 50) score += 10;
+  if (this.profileCompletion >= 80) score += 10;
+  if (this.photos?.length >= 3) score += 10;
+  if (this.isPremium) score += 10;
+  
+  this.trustScore = Math.min(score, 100);
+  return this.trustScore;
 };
 
 export default mongoose.model('User', userSchema);

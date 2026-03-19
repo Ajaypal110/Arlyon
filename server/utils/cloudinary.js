@@ -47,3 +47,13 @@ export const uploadMedia = async (base64Str) => {
     throw new Error('Failed to upload media to Cloudinary');
   }
 };
+
+export const deleteImage = async (publicId) => {
+  try {
+    const response = await cloudinary.uploader.destroy(publicId);
+    return response;
+  } catch (error) {
+    console.error('Cloudinary Delete Error:', error);
+    throw new Error('Failed to delete image from Cloudinary');
+  }
+};

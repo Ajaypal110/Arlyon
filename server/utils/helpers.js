@@ -54,3 +54,52 @@ export const calculateCompatibility = (user1, user2) => {
 
   return { score: Math.min(score, 99), breakdown };
 };
+
+export const generatePersonalityTraits = (user) => {
+  const bio = (user.bio || '').toLowerCase();
+  const interests = (user.interests || []).map(i => i.toLowerCase());
+  
+  // Base scores at 50
+  let traits = {
+    openness: 50,
+    conscientiousness: 50,
+    extraversion: 50,
+    agreeableness: 50,
+    neuroticism: 50
+  };
+
+  // Heuristic keywords
+  const mappings = {
+    openness: ['travel', 'art', 'creative', 'photography', 'music', 'reading', 'nature', 'hiking', 'adventure', 'explore'],
+    conscientiousness: ['ambition', 'fitness', 'goal', 'work', 'gym', 'workout', 'professional', 'study', 'reading'],
+    extraversion: ['social', 'dancing', 'party', 'gaming', 'sports', 'comedy', 'outdoors', 'friends', 'meetup'],
+    agreeableness: ['friendship', 'nature', 'meditation', 'yoga', 'kindness', 'volunteer', 'pets', 'dog', 'cat', 'socially'],
+    neuroticism: ['deep', 'emotional', 'thinker', 'private', 'calm', 'quiet']
+  };
+
+  // Adjust scores based on interests
+  interests.forEach(interest => {
+    Object.keys(mappings).forEach(trait => {
+      if (mappings[trait].includes(interest)) {
+        traits[trait] += 5;
+      }
+    });
+  });
+
+  // Adjust scores based on bio keywords
+  Object.keys(mappings).forEach(trait => {
+    mappings[trait].forEach(keyword => {
+      if (bio.includes(keyword)) {
+        traits[trait] += 3;
+      }
+    });
+  });
+
+  // Add some randomness (+/- 10) to make it look "AI generated"
+  Object.keys(traits).forEach(t => {
+    traits[t] += Math.floor(Math.random() * 21) - 10;
+    traits[t] = Math.max(20, Math.min(95, traits[t])); // Keep in 20-95 range
+  });
+
+  return traits;
+};

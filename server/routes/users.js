@@ -4,7 +4,8 @@ import Like from '../models/Like.js';
 import Match from '../models/Match.js';
 import Message from '../models/Message.js';
 import { protect } from '../middleware/auth.js';
-import { uploadImage } from '../utils/cloudinary.js';
+import { uploadImage, deleteImage } from '../utils/cloudinary.js';
+import { generatePersonalityTraits } from '../utils/helpers.js';
 
 const router = express.Router();
 
@@ -47,6 +48,7 @@ router.put('/profile', protect, async (req, res) => {
     });
 
     user.calculateProfileCompletion();
+    user.personalityTraits = generatePersonalityTraits(user);
     await user.save();
     res.json({ success: true, user });
   } catch (error) {
@@ -82,6 +84,7 @@ router.post('/onboarding', protect, async (req, res) => {
       user.age = Math.max(0, Math.min(100, age)); // Sanity check
     }
     user.calculateProfileCompletion();
+    user.personalityTraits = generatePersonalityTraits(user);
     await user.save();
     res.json({ success: true, user });
   } catch (error) {
@@ -135,6 +138,31 @@ router.post('/photos', protect, async (req, res) => {
   }
 });
 
+// DELETE /api/users/photos
+router.delete('/photos', protect, async (req, res) => {
+  try {
+    const { publicId } = req.query;
+    if (!publicId) return res.status(400).json({ success: false, message: 'publicId is required' });
+    
+    // Attempt to delete from Cloudinary
+    try {
+      await deleteImage(publicId);
+    } catch (err) {
+      console.warn('Cloudinary delete failed, continuing with DB removal:', err.message);
+    }
+
+    const user = await User.findById(req.user._id);
+    user.photos = user.photos.filter(p => p.publicId !== publicId);
+    
+    user.calculateProfileCompletion();
+    await user.save();
+    
+    res.json({ success: true, user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // GET /api/users/discover
 router.get('/discover', protect, async (req, res) => {
   try {
@@ -179,7 +207,7 @@ router.get('/discover', protect, async (req, res) => {
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const users = await User.find(filter)
-      .select('name age gender avatar photos bio interests location trustScore profileCompletion isPhotoVerified isPremium premiumTier currentMood')
+      .select('name age gender avatar photos bio interests location trustScore profileCompletion isPhotoVerified isPremium premiumTier currentMood personalityTraits')
       .sort({ boostActive: -1, isPremium: -1, trustScore: -1, createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -276,6 +304,37 @@ router.get('/stats', protect, async (req, res) => {
       recentMatches,
       activities
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// PUT /api/users/settings
+router.put('/settings', protect, async (req, res) => {
+  try {
+    const { category, setting, value } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (category === 'privacy' || category === 'notifications') {
+      user.settings[category][setting] = value;
+      await user.save();
+      res.json({ success: true, user });
+    } else {
+      res.status(400).json({ success: false, message: 'Invalid settings category' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// DELETE /api/users/account
+router.delete('/account', protect, async (req, res) => {
+  try {
+    // In a real app, you might want to deactivate instead of delete, 
+    // or delete all related data (matches, messages, likes).
+    // For now, we'll mark as inactive.
+    await User.findByIdAndUpdate(req.user._id, { isActive: false });
+    res.json({ success: true, message: 'Account deactivated' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

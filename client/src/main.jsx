@@ -22,6 +22,7 @@ import Matches from './pages/app/Matches';
 import Chat from './pages/app/Chat';
 import Profile from './pages/app/Profile';
 import Settings from './pages/app/Settings';
+import EditProfile from './pages/app/EditProfile';
 import Premium from './pages/app/Premium';
 import Notifications from './pages/app/Notifications';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -71,6 +72,7 @@ function App() {
                     <Route path="matches" element={<Matches />} />
                     <Route path="chat" element={<Chat />} />
                     <Route path="profile/:id?" element={<Profile />} />
+                    <Route path="profile/edit" element={<EditProfile />} />
                     <Route path="settings" element={<Settings />} />
                     <Route path="premium" element={<Premium />} />
                     <Route path="notifications" element={<Notifications />} />

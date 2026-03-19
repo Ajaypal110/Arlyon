@@ -6,22 +6,27 @@ import https from 'https';
  * to prevent the service from spinning down due to inactivity.
  */
 export const startKeepAlive = () => {
-    // Only run in production to avoid unnecessary pings during development
-    if (process.env.NODE_ENV !== 'production') {
-        console.log('Keep-alive: Disabled (not in production)');
+    const isProduction = process.env.NODE_ENV === 'production';
+    const isRender = !!process.env.RENDER;
+    const isForced = process.env.ENABLE_KEEP_ALIVE === 'true';
+
+    if (!isProduction && !isRender && !isForced) {
+        console.log('Keep-alive: Disabled (not in production/Render and not forced)');
         return;
     }
 
-    const url = 'https://arlyon.onrender.com/api/health';
+    const url = process.env.APP_URL || 'https://arlyon.onrender.com/api/health';
     const interval = 5 * 60 * 1000; // 5 minutes
 
-    console.log(`Keep-alive: Started (pinging ${url} every 5 mins)`);
+    console.log(`🚀 Keep-alive: Active (target: ${url})`);
 
     setInterval(() => {
         https.get(url, (res) => {
-            console.log(`[Keep-Alive] Pinged ${url}: Status ${res.statusCode}`);
+            if (res.statusCode !== 200) {
+                console.warn(`[Keep-Alive] Received status ${res.statusCode} from ${url}`);
+            }
         }).on('error', (err) => {
-            console.error(`[Keep-Alive] Error pinging ${url}: ${err.message}`);
+            console.error(`[Keep-Alive] Connect error: ${err.message}`);
         });
     }, interval);
 };
